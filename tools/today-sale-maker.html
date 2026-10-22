@@ -1,0 +1,594 @@
+<title>오늘의 할인 메이커</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* Layout: 작업대 두 칸 — 왼쪽 입력·완성 글, 오른쪽 4:5 이미지 미리보기(고정). 폰에서는 미리보기가 맨 위. */
+:root {
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --fg: #17191E;
+  --muted: #5D6370;
+  --line: #DCDFE5;
+  --tag: #FFD83D;      /* 가격표 노랑 */
+  --tag-ink: #17191E;
+  --sale: #D8261C;     /* 할인가 빨강 */
+  --ok: #1F7A4D;
+  --display: "Black Han Sans", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121418; --surface: #1B1E24; --fg: #ECEEF2; --muted: #9BA2AE; --line: #2D323B;
+    --tag: #FFD83D; --tag-ink: #17191E; --sale: #FF6A5C; --ok: #4CC38A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121418; --surface: #1B1E24; --fg: #ECEEF2; --muted: #9BA2AE; --line: #2D323B;
+  --tag: #FFD83D; --tag-ink: #17191E; --sale: #FF6A5C; --ok: #4CC38A; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand {
+  font-family: var(--display); font-size: 22px; background: var(--tag); color: var(--tag-ink);
+  padding: 4px 14px; border-radius: 999px; letter-spacing: .02em;
+}
+header p { margin: 0; color: var(--muted); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px); gap: 20px; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.preview-col { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+@media (max-width: 820px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .preview-col { position: static; order: -1; }
+}
+section {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0;
+}
+section.auto { border: 2px dashed var(--tag); }
+h2 { margin: 0; font-size: 16px; font-weight: 700; text-wrap: balance; }
+.hint { margin: 0; color: var(--muted); font-size: 13px; }
+.hint kbd { font-family: var(--body); font-weight: 700; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 0 6px; color: var(--fg); }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.fields .full { grid-column: 1 / -1; }
+@media (max-width: 480px) { .fields { grid-template-columns: minmax(0, 1fr); } }
+label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--muted); min-width: 0; }
+input[type="text"], input[type="number"], input[type="url"], textarea {
+  font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 9px; padding: 9px 11px; width: 100%; min-width: 0;
+}
+input[type="file"] { font: inherit; font-size: 14px; color: var(--fg); max-width: 100%; }
+textarea { resize: vertical; min-height: 64px; }
+input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--sale); outline-offset: 2px; }
+.row3 { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, .8fr) minmax(0, .6fr); gap: 12px; grid-column: 1 / -1; }
+@media (max-width: 560px) { .row3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.check { flex-direction: row; align-items: center; gap: 8px; color: var(--fg); font-weight: 400; font-size: 14px; }
+.calc { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--bg); font-variant-numeric: tabular-nums;
+}
+.chip b { color: var(--sale); }
+button {
+  font: inherit; font-weight: 700; border-radius: 10px; padding: 10px 14px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+}
+button.primary { background: var(--tag); color: var(--tag-ink); border-color: transparent; }
+button:disabled { opacity: .55; cursor: default; }
+.out-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+pre.out {
+  margin: 0; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; font-family: var(--body); font-size: 14px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0;
+}
+.count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.stage { display: flex; justify-content: center; }
+canvas { width: 100%; max-width: 340px; aspect-ratio: 4 / 5; border-radius: 12px; background: #000; display: block; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btns button { flex: 1 1 140px; }
+.status { font-size: 13px; color: var(--muted); margin: 0; min-height: 1.5em; }
+.status.ok { color: var(--ok); }
+.status.err { color: var(--sale); }
+.sample-note { font-size: 12px; color: var(--muted); text-align: center; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="brand">오늘의 할인</span>
+    <p>토스 공유 문구만 붙이면 스레드 글과 이미지 카드를 만들어요.</p>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="auto">
+        <h2>① 토스 공유 문구 붙여넣기</h2>
+        <p class="hint">쉐어링크에서 복사한 문구(광고 문구, 상품명, 링크)를 그대로 붙여 넣으면 상품명, 짧은 이름, 수량, 링크가 자동으로 들어가요. 가격은 ②에서 캡처로 읽거나 직접 입력해 주세요.</p>
+        <textarea id="paste" rows="4" placeholder="✱ 이 포스팅은 토스쇼핑 쉐어링크 활동의 일환으로, …&#10;상품명&#10;https://toss.shopping/_m/…"></textarea>
+        <p class="status" id="pasteStatus"></p>
+      </section>
+
+      <section>
+        <h2>② 캡처로 가격·사진 채우기</h2>
+        <p class="hint">토스쇼핑 상품 화면을 캡처해서 올리면 가격, 수량, 특징, 멘트를 채우고 상품 사진도 잘라서 이미지에 넣어요. 링크는 ①에서 넣은 그대로 둬요.</p>
+        <input id="shot" type="file" accept="image/png,image/jpeg,image/webp">
+        <div class="btns"><button type="button" class="primary" id="readShot">캡처에서 정보 읽기</button></div>
+        <p class="status" id="shotStatus">캡처를 고르면 바로 읽기 시작해요.</p>
+      </section>
+
+      <section>
+        <h2>상품 정보</h2>
+        <p class="hint">줄을 바꾸고 싶은 곳에 <kbd>/</kbd> 를 넣으면 글과 이미지 모두 그 자리에서 줄이 바뀌어요.</p>
+        <div class="fields">
+          <label class="full">상품명 (원래 이름)
+            <input id="name" type="text" value="양계장사람들 무항생제 계란, 대란, 60구, 1개">
+          </label>
+          <label class="full">보여줄 상품명 (비우면 자동 정리)
+            <input id="display" type="text" value="" placeholder="양계장사람들 무항생제 계란 / 대란 · 60구">
+          </label>
+          <label>짧은 이름 (첫 문구용)
+            <input id="short" type="text" value="계란">
+          </label>
+          <label>링크 (쉐어링크에서 발급받은 내 링크)
+            <input id="link" type="url" value="https://toss.shopping/_m/D54kVLUt">
+          </label>
+          <div class="row3">
+            <label>정가 (원)<input id="orig" type="number" inputmode="numeric" min="0" value="26900"></label>
+            <label>할인가 (원)<input id="sale" type="number" inputmode="numeric" min="0" value="15900"></label>
+            <label>수량<input id="qty" type="number" inputmode="numeric" min="1" value="60"></label>
+            <label>단위<input id="unit" type="text" value="구"></label>
+          </div>
+          <label class="full">특징 (한 줄에 하나)
+            <textarea id="features" rows="3">무항생제 인증
+대란 사이즈</textarea>
+          </label>
+          <label class="full">한 줄 멘트
+            <input id="memo" type="text" value="한 판씩 사다가 금방 떨어지는 집이라면 / 이번에 넉넉하게 받아 두세요.">
+          </label>
+          <label>마감 (선택, 예: 10월 25일)
+            <input id="deadline" type="text" value="">
+          </label>
+          <label>첫 문구 직접 쓰기 (비우면 자동)
+            <input id="hook" type="text" value="" placeholder="계란 1개 / 265원?">
+          </label>
+          <label class="full">광고 표시 문구
+            <textarea id="disclosure" rows="2">✱ 이 포스팅은 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</textarea>
+          </label>
+          <label class="full">상품 사진 직접 올리기 (이미지에 들어가요)
+            <input id="photo" type="file" accept="image/*">
+          </label>
+          <label class="check full"><input id="inComment" type="checkbox"> 링크는 본문 대신 첫 댓글에 달기</label>
+        </div>
+        <div class="calc" id="calc"></div>
+      </section>
+
+      <section>
+        <div class="out-head"><h2>긴 버전</h2><button type="button" data-copy="long">복사</button></div>
+        <pre class="out" id="long"></pre>
+        <span class="count" id="longCount"></span>
+      </section>
+
+      <section>
+        <div class="out-head"><h2>짧은 버전</h2><button type="button" data-copy="short">복사</button></div>
+        <pre class="out" id="shortOut"></pre>
+        <span class="count" id="shortCount"></span>
+      </section>
+
+      <section id="commentBox" hidden>
+        <div class="out-head"><h2>첫 댓글</h2><button type="button" data-copy="comment">복사</button></div>
+        <pre class="out" id="comment"></pre>
+      </section>
+    </div>
+
+    <div class="col preview-col">
+      <section>
+        <h2>이미지 미리보기</h2>
+        <div class="stage"><canvas id="cv" width="1080" height="1350"></canvas></div>
+        <p class="sample-note" id="sampleNote">예시 그림이에요. 캡처나 상품 사진을 올리면 바뀌어요.</p>
+        <div class="btns">
+          <button type="button" class="primary" id="still">이미지 저장</button>
+        </div>
+        <p class="status" id="status"></p>
+        <img id="stillImg" alt="저장할 이미지" hidden style="width:100%;max-width:340px;border-radius:12px;margin:0 auto;display:block">
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const IDS = ["name","display","short","link","orig","sale","qty","unit","features","memo","deadline","hook","disclosure","inComment"];
+  const KEY = "today-sale-maker-v2";
+  const fmt = n => Math.round(n).toLocaleString("ko-KR");
+  const splitLines = str => String(str || "").split("/").map(x => x.trim()).filter(Boolean);
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (saved) IDS.forEach(k => {
+      if (!(k in saved)) return;
+      if ($(k).type === "checkbox") $(k).checked = !!saved[k]; else $(k).value = saved[k];
+    });
+  } catch (e) {}
+
+  // "브랜드 상품, 대란, 60구, 1개" → "브랜드 상품 / 대란 · 60구"
+  function autoDisplay(name) {
+    const parts = name.split(",").map(x => x.trim()).filter(Boolean)
+      .filter(p => !/^1\s*(개|팩|박스|세트|봉|통|병)$/.test(p));
+    if (parts.length <= 1) return parts[0] || "";
+    return parts[0] + " / " + parts.slice(1).join(" · ");
+  }
+  // 문장 끝과 / 에서 줄 나누기
+  const memoLines = memo => splitLines(memo).flatMap(l => l.split(/(?<=[.!?])\s+/)).map(x => x.trim()).filter(Boolean);
+
+  function read() {
+    const s = {};
+    IDS.forEach(k => s[k] = $(k).type === "checkbox" ? $(k).checked : $(k).value.trim());
+    s.orig = Number(s.orig) || 0; s.sale = Number(s.sale) || 0; s.qty = Math.max(1, Number(s.qty) || 1);
+    s.pct = s.orig > s.sale && s.sale > 0 ? Math.floor((1 - s.sale / s.orig) * 100) : 0;
+    s.per = s.qty > 1 && s.sale ? Math.round(s.sale / s.qty) : 0;
+    s.perOrig = s.qty > 1 && s.orig ? Math.round(s.orig / s.qty) : 0;
+    s.saved = s.per && s.perOrig > s.per ? s.perOrig - s.per : 0;
+    s.perWord = ({ 매: "장당", 장: "장당", 캔: "캔당", 병: "병당", 롤: "롤당", 팩: "팩당", 포: "포당" })[s.unit] || "개당";
+    s.feats = s.features.split("\n").map(x => x.trim()).filter(Boolean);
+    s.autoDisplay = autoDisplay(s.name);
+    s.displayLines = splitLines(s.display || s.autoDisplay);
+    s.autoHook = s.per && s.short ? `${s.short} 1${s.perWord.replace("당", "")} / ${fmt(s.per)}원?`
+      : s.pct ? `${s.pct}% 할인 / ${fmt(s.sale)}원` : (s.short || s.displayLines[0] || "");
+    s.hookLines = splitLines(s.hook || s.autoHook);
+    s.memoLines = memoLines(s.memo);
+    return s;
+  }
+
+  function texts(s) {
+    const linkLine = s.inComment ? "🔗 링크는 댓글에 👇" : `🔗 ${s.link}`;
+    const until = s.deadline ? `⏰ ${s.deadline}까지` : null;
+    const priceLine = !s.sale ? null : s.orig > s.sale ? `💰 ${fmt(s.orig)}원 → ${fmt(s.sale)}원` : `💰 ${fmt(s.sale)}원`;
+    const dealLine = [s.pct ? `${s.pct}% 할인` : "", s.per ? `${s.perWord} 약 ${fmt(s.per)}원` : ""].filter(Boolean).join(" · ") || null;
+    const [d1, ...dRest] = s.displayLines;
+    // 문단 = 배열 하나. 빈 문단은 건너뜀.
+    const longParas = [
+      [s.disclosure],
+      [s.hookLines.join(" ")],
+      [d1 ? `📦 ${d1}` : null, ...dRest],
+      [priceLine, dealLine],
+      s.feats.map(f => `✔ ${f}`),
+      [...s.memoLines, until],
+      [linkLine]
+    ];
+    const head = `${s.short || d1 || ""}${s.qty > 1 ? ` ${s.qty}${s.unit}` : ""}${s.sale ? ` ${fmt(s.sale)}원` : ""}`.trim();
+    const shortParas = [
+      [s.disclosure],
+      [head, dealLine ? dealLine.replace(" 약 ", " ") : null],
+      [...s.memoLines, until],
+      [linkLine]
+    ];
+    const join = paras => paras.map(p => p.filter(Boolean).join("\n")).filter(Boolean).join("\n\n");
+    return { long: join(longParas), short: join(shortParas), comment: `🔗 ${s.link}` };
+  }
+
+  let S = read(), T = texts(S);
+
+  function update() {
+    S = read(); T = texts(S);
+    $("long").textContent = T.long;
+    $("shortOut").textContent = T.short;
+    $("comment").textContent = T.comment;
+    $("commentBox").hidden = !S.inComment;
+    $("longCount").textContent = `${[...T.long].length}자 · 스레드는 500자까지`;
+    $("shortCount").textContent = `${[...T.short].length}자`;
+    $("hook").placeholder = S.autoHook;
+    $("display").placeholder = S.autoDisplay || "브랜드 상품명 / 규격 · 수량";
+    const chips = [];
+    if (S.pct) chips.push(`할인율 <b>${S.pct}%</b>`);
+    if (S.per) chips.push(`${S.perWord} <b>${fmt(S.per)}원</b>`);
+    if (S.saved) chips.push(`${S.perWord} ${fmt(S.saved)}원 절약`);
+    if (S.orig > S.sale) chips.push(`총 ${fmt(S.orig - S.sale)}원 할인`);
+    $("calc").innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join("");
+    try { const o = {}; IDS.forEach(k => o[k] = $(k).type === "checkbox" ? $(k).checked : $(k).value); localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
+    drawStill();
+  }
+  IDS.forEach(k => $(k).addEventListener("input", update));
+  $("inComment").addEventListener("change", update);
+
+  document.querySelectorAll("[data-copy]").forEach(btn => btn.addEventListener("click", () => {
+    const text = T[btn.dataset.copy];
+    const done = () => { btn.textContent = "복사됨"; setTimeout(() => btn.textContent = "복사", 1400); };
+    const fallback = () => {
+      const el = btn.closest("section").querySelector("pre");
+      const r = document.createRange(); r.selectNodeContents(el);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      btn.textContent = "선택됨, 길게 눌러 복사";
+    };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  }));
+
+  // ---------- 이미지 ----------
+  const cv = $("cv");
+  const ctx = cv.getContext("2d");
+  const W = 1080;
+  const C = { bg: "#FFD83D", ink: "#17191E", sale: "#D8261C", white: "#FFFFFF", grey: "#5A5243" };
+  const DISP = '"Black Han Sans", "IBM Plex Sans KR", sans-serif';
+  const BODY = '"IBM Plex Sans KR", sans-serif';
+
+  function sampleImage() {
+    const c = document.createElement("canvas"); c.width = c.height = 900;
+    const g = c.getContext("2d");
+    const bgG = g.createLinearGradient(0, 0, 0, 900); bgG.addColorStop(0, "#F1E3C8"); bgG.addColorStop(1, "#D9C29B");
+    g.fillStyle = bgG; g.fillRect(0, 0, 900, 900);
+    for (let r = 0; r < 4; r++) for (let q = 0; q < 4; q++) {
+      const x = 150 + q * 200, y = 150 + r * 200;
+      g.fillStyle = "#C9AE82"; g.beginPath(); g.arc(x, y + 10, 92, 0, Math.PI * 2); g.fill();
+      const eg = g.createRadialGradient(x - 25, y - 35, 10, x, y, 95);
+      eg.addColorStop(0, "#FFF9EF"); eg.addColorStop(1, "#E9CFA6");
+      g.fillStyle = eg; g.beginPath(); g.ellipse(x, y, 70, 86, 0, 0, Math.PI * 2); g.fill();
+    }
+    return c;
+  }
+  let img = sampleImage(), userPhoto = false;
+  const loadImage = file => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = r.result; };
+    r.onerror = rej; r.readAsDataURL(file);
+  });
+  $("photo").addEventListener("change", async e => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try { img = await loadImage(f); userPhoto = true; $("sampleNote").hidden = true; drawStill(); } catch (err) {}
+  });
+
+  const clamp = x => Math.max(0, Math.min(1, x));
+    function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+
+  // 한 줄(의미 단위)이 넘치면 띄어쓰기 기준으로 가장 고르게 두 줄로 나눔. 단어 중간은 자르지 않음.
+  function splitBalanced(line, maxW) {
+    if (ctx.measureText(line).width <= maxW) return [line];
+    const words = line.split(" ");
+    let best = null;
+    for (let i = 1; i < words.length; i++) {
+      const a = words.slice(0, i).join(" "), b = words.slice(i).join(" ");
+      const m = Math.max(ctx.measureText(a).width, ctx.measureText(b).width);
+      if (!best || m < best.m) best = { m, lines: [a, b] };
+    }
+    return best ? best.lines : [line];
+  }
+  // 수동 줄(/) 유지 → 넘치면 균형 분할 → 그래도 넘치면 글씨를 줄임
+  function fit(lines, font, maxW, maxLines, start, min) {
+    for (let size = start; size >= min; size -= 4) {
+      ctx.font = font(size);
+      const out = lines.flatMap(l => splitBalanced(l, maxW));
+      if (out.length <= maxLines && out.every(l => ctx.measureText(l).width <= maxW)) return { size, lines: out };
+    }
+    ctx.font = font(min);
+    return { size: min, lines: lines.flatMap(l => splitBalanced(l, maxW)).slice(0, maxLines) };
+  }
+  function cover(im, x, y, w, h, z) {
+    const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
+    let sw, sh; if (iw / ih > w / h) { sh = ih / z; sw = sh * w / h; } else { sw = iw / z; sh = sw * h / w; }
+    ctx.drawImage(im, (iw - sw) / 2, (ih - sh) / 2, sw, sh, x, y, w, h);
+  }
+
+  const today = new Date(); const dateLabel = `${today.getMonth() + 1}월 ${today.getDate()}일`;
+
+  function setStatus(msg, cls) { $("status").textContent = msg; $("status").className = "status" + (cls ? " " + cls : ""); }
+  let downloads = null, sample = null;
+  const use = name => (window.claude && window.claude.use) ? window.claude.use(name).catch(() => null) : Promise.resolve(null);
+  use("downloads").then(d => { downloads = d; });
+
+  // ---------- 이미지 카드 (4:5, 1080×1350) ----------
+  function drawStill() {
+    {
+      const s = S, HH = 1350;
+      ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, HH);
+      ctx.save(); ctx.globalAlpha = .07; ctx.strokeStyle = C.ink; ctx.lineWidth = 18;
+      for (let i = -HH; i < W; i += 90) { ctx.beginPath(); ctx.moveTo(i, HH); ctx.lineTo(i + HH, 0); ctx.stroke(); }
+      ctx.restore();
+      ctx.textBaseline = "middle"; ctx.textAlign = "left"; ctx.font = `58px ${DISP}`;
+      const bw = ctx.measureText("오늘의 할인").width + 64;
+      ctx.fillStyle = C.ink; rr(60, 50, bw, 100, 50); ctx.fill();
+      ctx.fillStyle = C.bg; ctx.fillText("오늘의 할인", 92, 102);
+      ctx.textAlign = "right"; ctx.font = `600 40px ${BODY}`; ctx.fillStyle = C.ink; ctx.fillText(dateLabel, W - 60, 102);
+
+      const size = 640, x = (W - size) / 2, y = 190;
+      ctx.fillStyle = C.ink; rr(x + 14, y + 18, size, size, 40); ctx.fill();
+      ctx.fillStyle = C.white; rr(x - 10, y - 10, size + 20, size + 20, 48); ctx.fill();
+      ctx.save(); rr(x, y, size, size, 40); ctx.clip(); ctx.fillStyle = C.white; ctx.fillRect(x, y, size, size);
+      cover(img, x, y, size, size, 1.02); ctx.restore();
+      if (s.pct) {
+        ctx.save(); ctx.translate(x + size - 40, y + 60); ctx.rotate(-.21);
+        ctx.fillStyle = C.sale; ctx.beginPath(); ctx.arc(0, 0, 110, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = C.white; ctx.lineWidth = 7; ctx.stroke();
+        ctx.fillStyle = C.white; ctx.textAlign = "center";
+        ctx.font = `80px ${DISP}`; ctx.fillText(`${s.pct}%`, 0, -12); ctx.font = `40px ${DISP}`; ctx.fillText("할인", 0, 54);
+        ctx.restore();
+      }
+      ctx.textAlign = "center";
+      let yy = 905;
+      if (s.displayLines.length) {
+        const [first, ...rest] = s.displayLines;
+        const f1 = fit([first], z => `700 ${z}px ${BODY}`, W - 140, 1, 54, 36);
+        ctx.font = `700 ${f1.size}px ${BODY}`; ctx.fillStyle = C.ink; ctx.fillText(f1.lines[0], W / 2, yy);
+        if (rest.length) {
+          const f2 = fit([rest.join(" · ")], z => `600 ${z}px ${BODY}`, W - 160, 1, 42, 30);
+          ctx.font = `600 ${f2.size}px ${BODY}`; ctx.fillStyle = C.grey; ctx.fillText(f2.lines[0], W / 2, yy + 60);
+        }
+      }
+      if (s.orig > s.sale && s.sale) {
+        ctx.font = `64px ${DISP}`; ctx.fillStyle = C.grey;
+        const txt = `${fmt(s.orig)}원`, tw = ctx.measureText(txt).width;
+        ctx.fillText(txt, W / 2, 1040);
+        ctx.strokeStyle = C.sale; ctx.lineWidth = 9; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(W / 2 - tw / 2 - 10, 1042); ctx.lineTo(W / 2 + tw / 2 + 10, 1038); ctx.stroke();
+      }
+      if (s.sale) { ctx.fillStyle = C.sale; ctx.font = `150px ${DISP}`; ctx.fillText(`${fmt(s.sale)}원`, W / 2, 1145); }
+      else { ctx.fillStyle = C.grey; ctx.font = `600 56px ${BODY}`; ctx.fillText("가격을 입력해 주세요", W / 2, 1145); }
+      if (s.per) {
+        ctx.font = `54px ${DISP}`;
+        const txt = `${s.perWord} ${fmt(s.per)}원 · ${s.qty}${s.unit}`, tw = ctx.measureText(txt).width + 72;
+        ctx.fillStyle = C.ink; rr(W / 2 - tw / 2, 1232, tw, 92, 46); ctx.fill();
+        ctx.fillStyle = C.bg; ctx.fillText(txt, W / 2, 1280);
+      }
+    }
+    return cv;
+  }
+  $("still").addEventListener("click", () => {
+    const c = drawStill();
+    c.toBlob(async png => {
+      if (!png) { setStatus("이미지를 만들지 못했어요. 다시 눌러 주세요.", "err"); return; }
+      const el = $("stillImg"); el.src = URL.createObjectURL(png); el.hidden = false;
+      if (!downloads) { setStatus("이미지를 만들었어요. 아래 이미지를 길게 눌러 저장해 주세요.", "ok"); return; }
+      const name = `오늘의할인_${(S.short || "상품").replace(/[\\/:*?"<>|]/g, "")}_${today.getMonth() + 1}${String(today.getDate()).padStart(2, "0")}.png`;
+      try { await downloads.save({ filename: name, data: png }); setStatus("이미지를 저장했어요.", "ok"); }
+      catch (e) {
+        if (e && e.code === "declined") setStatus("저장을 취소했어요.");
+        else setStatus("바로 저장할 수 없어요. 아래 이미지를 길게 눌러 저장해 주세요.", "err");
+      }
+    }, "image/png");
+  });
+
+  // ---------- 토스 공유 문구 붙여넣기 ----------
+  function parseShare(text) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const li = lines.findIndex(l => /https?:\/\/\S+/.test(l));
+    if (li < 0) return null;
+    const link = lines[li].match(/https?:\/\/\S+/)[0];
+    const disc = lines.find(l => /^✱|수수료/.test(l)) || "";
+    const before = lines.slice(0, li).filter(l => l !== disc);
+    const after = lines.slice(li + 1).filter(l => l !== disc);
+    return { link, disc, name: before[before.length - 1] || after[0] || "" };
+  }
+  // "양계장사람들 무항생제 계란, 대란, 60구" → "계란" / "베베앙 시그니처 물티슈 캡형" → "물티슈"
+  function guessShort(name) {
+    const words = name.split(",")[0].replace(/\(.*?\)|\[.*?\]/g, "").trim().split(/\s+/).filter(Boolean);
+    for (let i = words.length - 1; i >= 0; i--) {
+      const w = words[i];
+      if (/(형|용|식|타입)$/.test(w) || /^(대용량|소용량|특대|국내산|무료배송|정품|신상)$/.test(w) || /\d/.test(w)) continue;
+      return w;
+    }
+    return words[words.length - 1] || "";
+  }
+  // "70매, 10팩" → 700매, "60구, 1개" → 60구
+  function guessQty(name) {
+    const COUNT = /^(구|개입|입|매|개|롤|캔|병|포|장|알)$/, PACK = /^(팩|봉|박스|세트|묶음|통|번들)$/;
+    let count = null, packs = 1;
+    for (const seg of name.split(",").map(x => x.trim())) {
+      const m = seg.match(/^(\d[\d,]*)\s*([가-힣]+)$/);
+      if (!m) continue;
+      const n = Number(m[1].replace(/,/g, "")), u = m[2];
+      if (COUNT.test(u) && !(u === "개" && n === 1 && count)) { if (!count) count = { n, u: u === "개입" ? "개" : u }; else if (u === "개") packs *= n; }
+      else if (PACK.test(u)) packs *= n;
+    }
+    if (count && count.n * packs > 1) return { qty: count.n * packs, unit: count.u };
+    if (packs > 1) return { qty: packs, unit: "팩" };
+    return { qty: 1, unit: "개" };
+  }
+  function pasteStatus(msg, cls) { $("pasteStatus").textContent = msg; $("pasteStatus").className = "status" + (cls ? " " + cls : ""); }
+  let lastPaste = "";
+  $("paste").addEventListener("input", () => {
+    const p = parseShare($("paste").value);
+    if (!p) { pasteStatus($("paste").value.trim() ? "링크(https://…)가 들어간 공유 문구를 붙여 넣어 주세요." : ""); return; }
+    const key = p.link + "|" + p.name;
+    if (key === lastPaste) return;
+    lastPaste = key;
+    $("link").value = p.link;
+    if (p.disc) $("disclosure").value = p.disc;
+    $("name").value = p.name;
+    $("display").value = "";
+    $("short").value = guessShort(p.name);
+    const q = guessQty(p.name); $("qty").value = q.qty; $("unit").value = q.unit;
+    // 이전 상품 값이 섞이지 않게 비움
+    ["orig", "sale", "features", "memo", "hook", "deadline"].forEach(id => $(id).value = "");
+    img = sampleImage(); userPhoto = false; $("photo").value = "";
+    $("sampleNote").hidden = false; $("sampleNote").textContent = "예시 그림이에요. 캡처나 상품 사진을 올리면 바뀌어요.";
+    update();
+    pasteStatus(`채웠어요. 이제 가격을 입력하거나 ②에서 캡처로 채워 주세요.`, "ok");
+  });
+
+  // ---------- 캡처로 자동 입력 ----------
+  function shotStatus(msg, cls) { $("shotStatus").textContent = msg; $("shotStatus").className = "status" + (cls ? " " + cls : ""); }
+  const PROMPT = `이 이미지는 한국 온라인 쇼핑(토스쇼핑) 상품 화면 캡처입니다. 화면에 실제로 보이는 정보만 읽어서 아래 형식의 JSON 객체 하나로만 답하세요. 보이지 않는 값은 null로 두세요.
+{
+  "name": "상품 전체 이름(화면 표기 그대로)",
+  "display": "두 줄로 보여줄 상품명. 첫 줄은 브랜드+핵심 상품, 둘째 줄은 규격·수량을 ' · '로 연결, 두 줄 사이는 ' / '. 예: 양계장사람들 무항생제 계란 / 대란 · 60구",
+  "short": "영상 첫 문구용 일반 명사 1~4글자. 예: 계란, 물티슈, 삼겹살",
+  "orig": 할인 전 가격 숫자(원) 또는 null,
+  "sale": 현재 판매가 숫자(원),
+  "qty": 셀 수 있는 낱개 총수량 숫자(예: 60구→60, 20매×3팩→60). 무게·용량 상품이거나 모르면 1,
+  "unit": "낱개 단위(구, 개, 매, 입 등)",
+  "features": ["화면에 보이는 핵심 특징 2~3개, 각 12자 이내"],
+  "memo": "사고 싶게 만드는 친근한 한 문장. 의미가 끊기는 자리에 ' / '를 하나 넣어 두 줄로. 화면 정보에 근거하고 과장·허위 금지",
+  "photoBox": [left, top, right, bottom] 대표 상품 사진 영역을 이미지 너비·높이 대비 0~1 비율로, 없으면 null
+}`;
+
+  // 자동 읽기 상태: loading → ready | none
+  let sampleState = "loading";
+  const NO_SAMPLE = "이 화면에서는 캡처 자동 읽기가 안 돼요. 크롬이나 사파리에서 claude.ai로 이 페이지를 열어 보세요. 안 되면 캡처를 Claude 대화창에 올려 주시면 제가 읽어 드려요. 가격은 아래에 직접 입력해도 돼요.";
+  use("sample").then(async smp => {
+    const lim = smp && await smp.limits().catch(() => null);
+    if (!smp || !lim || !lim.images) { sampleState = "none"; return; }
+    sample = smp; sampleState = "ready";
+    if ($("shot").files && $("shot").files[0]) $("readShot").click();
+  });
+  $("shot").addEventListener("change", () => {
+    if (!($("shot").files && $("shot").files[0])) return;
+    if (sampleState === "ready") $("readShot").click();
+    else if (sampleState === "none") shotStatus(NO_SAMPLE, "err");
+    else shotStatus("캡처를 골랐어요. 읽기 기능이 준비되면 바로 시작해요…");
+  });
+
+  $("readShot").addEventListener("click", async () => {
+    const f = $("shot").files && $("shot").files[0];
+    if (!f) { shotStatus("먼저 위의 파일 선택을 눌러 상품 화면 캡처를 골라 주세요.", "err"); return; }
+    if (sampleState === "loading") { shotStatus("읽기 기능을 준비하고 있어요. 몇 초 뒤 다시 눌러 주세요."); return; }
+    if (sampleState === "none" || !sample) { shotStatus(NO_SAMPLE, "err"); return; }
+    $("readShot").disabled = true; shotStatus("캡처를 읽는 중이에요… (10~40초)");
+    try {
+      const d = await sample.json(PROMPT, { images: [f] });
+      const setV = (id, v) => { if (v !== null && v !== undefined && v !== "") $(id).value = v; };
+      setV("name", d.name); setV("display", d.display); setV("short", d.short);
+      setV("orig", Number(d.orig) || ""); setV("sale", Number(d.sale) || "");
+      setV("qty", Number(d.qty) || 1); setV("unit", d.unit);
+      if (Array.isArray(d.features) && d.features.length) $("features").value = d.features.map(String).join("\n");
+      setV("memo", d.memo);
+      $("hook").value = ""; $("deadline").value = "";
+      update();
+      let cropped = false;
+      const b = d.photoBox;
+      if (!userPhoto && Array.isArray(b) && b.length === 4 && b.every(n => typeof n === "number")) {
+        const shotImg = await loadImage(f);
+        const iw = shotImg.naturalWidth, ih = shotImg.naturalHeight;
+        const sx = clamp(b[0]) * iw, sy = clamp(b[1]) * ih, sw = (clamp(b[2]) - clamp(b[0])) * iw, sh = (clamp(b[3]) - clamp(b[1])) * ih;
+        if (sw > 40 && sh > 40) {
+          const c = document.createElement("canvas"); c.width = Math.round(sw); c.height = Math.round(sh);
+          c.getContext("2d").drawImage(shotImg, sx, sy, sw, sh, 0, 0, c.width, c.height);
+          img = c; cropped = true; drawStill();
+          $("sampleNote").hidden = false;
+          $("sampleNote").textContent = "캡처에서 잘라낸 사진이에요. 어색하면 상품 사진을 직접 올려 주세요.";
+        }
+      }
+      shotStatus(`채웠어요. 가격과 수량이 맞는지 확인하고 링크를 붙여 넣어 주세요.${cropped ? "" : " 상품 사진은 직접 올려 주세요."}`, "ok");
+    } catch (e) {
+      const code = e && e.code;
+      if (code === "not_granted" || code === "sampling_disabled" || code === "images_unavailable") {
+        shotStatus("자동 입력이 허용되지 않았어요. 아래 칸에 직접 입력해 주세요.", "err");
+      } else if (code === "image_rejected") shotStatus("이 이미지는 읽을 수 없어요. PNG나 JPG 캡처로 다시 골라 주세요.", "err");
+      else if (code === "rate_limited") shotStatus("요청이 많아요. 잠시 후 다시 눌러 주세요.", "err");
+      else if (code === "invalid_json") shotStatus("정보를 제대로 읽지 못했어요. 가격이 잘 보이게 다시 캡처해 주세요.", "err");
+      else shotStatus("읽는 중 문제가 생겼어요. 다시 눌러 주세요.", "err");
+    } finally {
+      $("readShot").disabled = false;
+    }
+  });
+
+  update();
+  (document.fonts && document.fonts.load)
+    ? Promise.all([document.fonts.load(`100px "Black Han Sans"`), document.fonts.load(`700 50px "IBM Plex Sans KR"`), document.fonts.load(`600 50px "IBM Plex Sans KR"`)]).then(drawStill, drawStill)
+    : drawStill();
+})();
+</script>
