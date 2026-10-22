@@ -83,6 +83,13 @@ button {
   border: 1px solid var(--line); background: var(--surface); color: var(--fg);
 }
 button.primary { background: var(--tag); color: var(--tag-ink); border-color: transparent; }
+a.btn {
+  display: inline-flex; justify-content: center; align-items: center; text-decoration: none; font-weight: 700;
+  border-radius: 10px; padding: 10px 14px; background: var(--tag); color: var(--tag-ink); flex: 1 1 200px; text-align: center;
+}
+a.btn[aria-disabled="true"] { opacity: .5; pointer-events: none; }
+.radios { display: flex; gap: 16px; flex-wrap: wrap; }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 button:disabled { opacity: .55; cursor: default; }
 .out-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 pre.out {
@@ -184,6 +191,27 @@ canvas { width: 100%; max-width: 340px; aspect-ratio: 4 / 5; border-radius: 12px
       <section id="commentBox" hidden>
         <div class="out-head"><h2>첫 댓글</h2><button type="button" data-copy="comment">복사</button></div>
         <pre class="out" id="comment"></pre>
+      </section>
+
+      <section class="auto">
+        <h2>③ 예약 보내기</h2>
+        <div class="radios">
+          <label class="check"><input type="radio" name="ver" id="verShort" value="short" checked> 짧은 버전</label>
+          <label class="check"><input type="radio" name="ver" id="verLong" value="long"> 긴 버전</label>
+          <label class="check"><input type="checkbox" id="now"> 지금 바로 올리기</label>
+        </div>
+        <div class="fields">
+          <label>날짜<input id="pDate" type="date"></label>
+          <label>시간<input id="pTime" type="time" step="900"></label>
+        </div>
+        <ol class="steps">
+          <li>오른쪽 <b>이미지 저장</b>으로 카드 이미지를 먼저 저장해요.</li>
+          <li>아래 버튼을 누르면 GitHub 예약 화면이 글이 채워진 채로 열려요.</li>
+          <li>본문의 표시된 자리에 저장한 이미지를 붙여 넣고 <b>Create</b>(Submit new issue)를 눌러요.</li>
+          <li>정한 시각이 지나면 15분 안에 스레드에 올라가고, 결과가 그 글에 댓글로 남아요.</li>
+        </ol>
+        <div class="btns"><a class="btn" id="issueLink" href="#" target="_blank" rel="noopener">GitHub에 예약 열기</a></div>
+        <p class="status" id="queueStatus"></p>
       </section>
     </div>
 
@@ -294,6 +322,7 @@ canvas { width: 100%; max-width: 340px; aspect-ratio: 4 / 5; border-radius: 12px
     $("calc").innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join("");
     try { const o = {}; IDS.forEach(k => o[k] = $(k).type === "checkbox" ? $(k).checked : $(k).value); localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
     drawStill();
+    queueLink();
   }
   IDS.forEach(k => $(k).addEventListener("input", update));
   $("inComment").addEventListener("change", update);
@@ -585,6 +614,48 @@ canvas { width: 100%; max-width: 340px; aspect-ratio: 4 / 5; border-radius: 12px
       $("readShot").disabled = false;
     }
   });
+
+  // ---------- 예약 보내기 (GitHub 이슈) ----------
+  const REPO_URL = "https://github.com/choiyh040-bit/link";
+  const REPLY_MARK = "=== 첫 댓글 ===";
+  const pad = n => String(n).padStart(2, "0");
+  (() => {
+    const d = new Date(Date.now() + 60 * 60 * 1000); d.setMinutes(0, 0, 0);
+    $("pDate").value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    $("pTime").value = `${pad(d.getHours())}:00`;
+  })();
+  function queueLink() {
+    const problems = [];
+    if (!/^https?:\/\//.test(S.link)) problems.push("내 링크");
+    if (!S.sale) problems.push("할인가");
+    const now = $("now").checked;
+    $("pDate").disabled = $("pTime").disabled = now;
+    let when = "지금";
+    if (!now) {
+      const [y, m, d] = ($("pDate").value || "").split("-").map(Number);
+      if (!y || !$("pTime").value) problems.push("날짜와 시간");
+      else {
+        when = `${m}/${d} ${$("pTime").value}`;
+        const t = new Date(`${$("pDate").value}T${$("pTime").value}:00`);
+        if (t < new Date(Date.now() - 5 * 60 * 1000)) problems.push("지난 시각(지금 바로 올리려면 체크)");
+      }
+    }
+    const version = $("verLong").checked ? T.long : T.short;
+    const title = `예약 ${when} ${S.short || ""}`.trim();
+    const body = [version, "", "<!-- ↓ 이 줄 아래에 저장한 이미지를 붙여 넣으세요 ↓ -->", "", ""]
+      .concat(S.inComment ? [REPLY_MARK, `🔗 ${S.link}`] : []).join("\n");
+    const a = $("issueLink");
+    if (problems.length) {
+      a.setAttribute("aria-disabled", "true"); a.href = "#";
+      $("queueStatus").textContent = `먼저 채워 주세요: ${problems.join(", ")}`; $("queueStatus").className = "status err";
+    } else {
+      a.removeAttribute("aria-disabled");
+      a.href = `${REPO_URL}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+      $("queueStatus").textContent = `제목: ${title}`; $("queueStatus").className = "status";
+    }
+  }
+  ["pDate", "pTime", "now", "verShort", "verLong"].forEach(id => $(id).addEventListener("input", queueLink));
+  ["now", "verShort", "verLong"].forEach(id => $(id).addEventListener("change", queueLink));
 
   update();
   (document.fonts && document.fonts.load)
