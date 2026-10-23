@@ -1,0 +1,20 @@
+name: 토스 링크 시험
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 토스쇼핑 공유 링크
+        required: true
+        default: https://toss.shopping/_m/D54kVLUt
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/probe_toss.py "${{ inputs.url }}"
