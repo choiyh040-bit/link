@@ -23,7 +23,9 @@ def on_response(resp):
 
 with sync_playwright() as p:
     b = p.chromium.launch(args=["--disable-blink-features=AutomationControlled"])
-    ctx = b.new_context(**p.devices["iPhone 13"], locale="ko-KR", timezone_id="Asia/Seoul")
+    mobile = len(sys.argv) > 2 and sys.argv[2] == "mobile"
+    dev = p.devices["iPhone 13"] if mobile else {"viewport": {"width": 1280, "height": 900}, "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"}
+    ctx = b.new_context(**dev, locale="ko-KR", timezone_id="Asia/Seoul")
     ctx.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
     pg = ctx.new_page()
     pg.on("response", on_response)
@@ -35,7 +37,10 @@ with sync_playwright() as p:
     text = pg.inner_text("body") or ""
     print("현재 주소:", pg.url)
     print("HTML 길이:", len(pg.content()))
-    pg.screenshot(path="toss-page.png", full_page=False)
+    try:
+        pg.screenshot(path="toss-page.png", full_page=False, timeout=8000)
+    except Exception as e:
+        print("스크린샷 실패:", str(e)[:80])
     b.close()
 
 print("화면 글자 수:", len(text))
