@@ -14,11 +14,12 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 6
+    container: mcr.microsoft.com/playwright/python:v1.48.0-jammy   # 브라우저가 미리 설치된 이미지
     steps:
       - uses: actions/checkout@v4
-      - run: pip install playwright==1.48.0 && python3 -m playwright install --with-deps chromium
-      - run: python3 scripts/probe_toss_render.py "${{ inputs.url }}"
+      - run: pip install playwright==1.48.0
+      - run: timeout 120 python3 scripts/probe_toss_render.py "${{ inputs.url }}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
