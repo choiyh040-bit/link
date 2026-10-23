@@ -1,0 +1,27 @@
+name: 토스 링크 시험 (브라우저)
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 토스쇼핑 공유 링크
+        required: true
+        default: https://toss.shopping/_m/D54kVLUt
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install playwright==1.48.0 && python3 -m playwright install --with-deps chromium
+      - run: python3 scripts/probe_toss_render.py "${{ inputs.url }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: toss-page
+          path: toss-page.png
+          if-no-files-found: ignore
