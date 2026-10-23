@@ -45,7 +45,7 @@ BATCH_MARK = "<!-- batch:{} -->"
 DONE_PREFIX = "상품(처리됨)"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
-URL_RE = re.compile(r"https?://\S+")
+URL_RE = re.compile(r"https?://(?:toss\.shopping|sharelink\.toss\.im|[\w.-]*toss\.im)/[^\s)\]]+")   # 토스 링크만 (다른 주소는 무시)
 PRICE_RE = re.compile(r"^\s*(\d[\d,]*)\s*원?\s*(?:/\s*(\d[\d,]*)\s*원?)?\s*$")
 
 
