@@ -28,3 +28,17 @@ print("가격 후보:", prices[:12])
 won = re.findall(r"(\d{1,3}(?:,\d{3})+)\s*원", html.unescape(re.sub(r"<[^>]+>", " ", body)))
 print("'원' 표기 후보:", won[:12])
 print("본문 앞부분:", re.sub(r"\s+", " ", body[:600]))
+
+# 가격이 어디에 들어 있는지 찾기 (구조화 데이터, 이스케이프된 JSON 포함)
+for m in re.finditer(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', body, re.S):
+    print("ld+json 내용:", m.group(1)[:800])
+flat = body.replace('\\"', '"')
+keys = re.findall(r'"([A-Za-z]*(?:[Pp]rice|[Dd]iscount|[Aa]mount)[A-Za-z]*)"\s*:\s*"?(\d{2,8})', flat)
+seen = []
+for k, v in keys:
+    if (k, v) not in seen:
+        seen.append((k, v))
+print("가격 관련 키:", seen[:30])
+for needle in sys.argv[2:]:
+    for m in list(re.finditer(re.escape(needle), flat))[:4]:
+        print(f"[{needle}] 주변:", re.sub(r"\s+", " ", flat[max(0, m.start() - 160):m.end() + 80]))

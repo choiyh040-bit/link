@@ -7,6 +7,10 @@ on:
         description: 토스쇼핑 공유 링크
         required: true
         default: https://toss.shopping/_m/D54kVLUt
+      needles:
+        description: 본문에서 찾아볼 값 (띄어쓰기로 구분)
+        required: false
+        default: "15900 15,900 26900"
 
 permissions:
   contents: read
@@ -17,4 +21,4 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - run: python3 scripts/probe_toss.py "${{ inputs.url }}"
+      - run: python3 scripts/probe_toss.py "${{ inputs.url }}" ${{ inputs.needles }}
