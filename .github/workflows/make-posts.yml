@@ -1,0 +1,32 @@
+name: 상품 등록 → 게시 초안
+
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write   # 카드 이미지를 images/cards/ 에 저장
+  issues: write     # 초안 이슈 만들기, 결과 댓글
+
+concurrency:
+  group: make-posts-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  make:
+    if: startsWith(github.event.issue.title, '상품')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install pillow==11.0.0
+      - name: 상품 등록 처리
+        run: python3 scripts/make_posts.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}

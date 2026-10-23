@@ -179,9 +179,12 @@ def handle(issue, user_id):
     if len(text) > MAX_CHARS:
         raise PostError(f"글이 {len(text)}자예요. 스레드는 {MAX_CHARS}자까지라 줄여 주세요.")
     if images:
-        data, ctype = download(images[0])
-        url = store_image(number, data, ctype)
-        time.sleep(3)
+        if images[0].startswith(f"https://raw.githubusercontent.com/{REPO}/"):
+            url = images[0]   # make_posts.py가 이미 저장소에 올린 카드
+        else:
+            data, ctype = download(images[0])
+            url = store_image(number, data, ctype)
+            time.sleep(3)
         media_id = publish(user_id, {"media_type": "IMAGE", "image_url": url, "text": text})
     else:
         media_id = publish(user_id, {"media_type": "TEXT", "text": text})
