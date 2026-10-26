@@ -423,7 +423,6 @@ canvas { width: 100%; max-width: 340px; aspect-ratio: 4 / 5; border-radius: 12px
       ctx.textAlign = "right"; ctx.font = `600 40px ${BODY}`; ctx.fillStyle = C.ink; ctx.fillText(dateLabel, W - 60, 102);
 
       const size = 640, x = (W - size) / 2, y = 190;
-      ctx.fillStyle = C.ink; rr(x + 14, y + 18, size, size, 40); ctx.fill();
       ctx.fillStyle = C.white; rr(x - 10, y - 10, size + 20, size + 20, 48); ctx.fill();
       ctx.save(); rr(x, y, size, size, 40); ctx.clip(); ctx.fillStyle = C.white; ctx.fillRect(x, y, size, size);
       cover(img, x, y, size, size, 1.02); ctx.restore();

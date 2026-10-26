@@ -260,7 +260,6 @@ def render_card(s, photo):
 
     # 상품 사진
     size, x, y = 640, (W - 640) // 2, 190
-    d.rounded_rectangle([x + 14, y + 18, x + 14 + size, y + 18 + size], radius=40, fill=INK)
     d.rounded_rectangle([x - 10, y - 10, x + size + 10, y + size + 10], radius=48, fill=WHITE)
     if photo:
         mask = Image.new("L", (size, size), 0)
