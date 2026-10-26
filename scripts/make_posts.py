@@ -46,7 +46,7 @@ DONE_PREFIX = "상품(처리됨)"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
 URL_RE = re.compile(r"https?://(?:toss\.shopping|sharelink\.toss\.im|[\w.-]*toss\.im)/[^\s)\]]+")   # 토스 링크만 (다른 주소는 무시)
-PRICE_RE = re.compile(r"^\s*(\d[\d,]*)\s*원?\s*(?:/\s*(\d[\d,]*)\s*원?)?\s*$")
+PRICE_RE = re.compile(r"^\s*(\d[\d,]*)\s*원?\s*(?:/\s*(\d[\d,]*)\s*(원|%)?)?\s*$")   # 할인가 / 정가 또는 할인율%
 
 
 def fmt(n):
@@ -64,15 +64,19 @@ def parse_batch(body):
         price = PRICE_RE.match(line)
         if url:
             last = {"name": pending["name"], "disc": pending["disc"] or DISCLOSURE,
-                    "link": url.group(0), "sale": None, "orig": None}
+                    "link": url.group(0), "sale": None, "orig": None, "pct": None}
             if pending["price"]:
-                last["sale"], last["orig"] = pending["price"]
+                last["sale"], last["orig"], last["pct"] = pending["price"]
             items.append(last)
             pending = {"name": "", "disc": "", "price": None}
         elif price:
-            nums = (int(price.group(1).replace(",", "")), int(price.group(2).replace(",", "")) if price.group(2) else None)
+            second = int(price.group(2).replace(",", "")) if price.group(2) else None
+            if price.group(3) == "%":   # 토스 앱에 정가 없이 할인율만 보일 때: 5350/70%
+                nums = (int(price.group(1).replace(",", "")), None, second)
+            else:
+                nums = (int(price.group(1).replace(",", "")), second, None)
             if last and last["sale"] is None:
-                last["sale"], last["orig"] = nums
+                last["sale"], last["orig"], last["pct"] = nums
             else:
                 pending["price"] = nums
         elif line.startswith("✱") or "수수료" in line:
@@ -167,7 +171,7 @@ def build(item, meta):
     s["display"] = auto_display(name)
     s["short"] = guess_short(name)
     s["qty"], s["unit"] = guess_qty(name)
-    s["pct"] = math.floor((1 - s["sale"] / s["orig"]) * 100) if s["orig"] > s["sale"] > 0 else 0
+    s["pct"] = item.get("pct") or (math.floor((1 - s["sale"] / s["orig"]) * 100) if s["orig"] > s["sale"] > 0 else 0)
     s["per"] = round(s["sale"] / s["qty"]) if s["qty"] > 1 and s["sale"] else 0
     s["per_word"] = PER_WORD.get(s["unit"], "개당")
     s["rating"], s["reviews"], s["rank"] = meta.get("rating"), meta.get("reviews"), meta.get("rank", "")
@@ -183,7 +187,7 @@ def post_text(s):
     else:
         hook = s["short"] or (s["display"][0] if s["display"] else "")
     d = s["display"]
-    price = f"💰 {fmt(s['orig'])}원 → {fmt(s['sale'])}원" if s["orig"] > s["sale"] else f"💰 {fmt(s['sale'])}원"
+    price = f"💰 {fmt(s['orig'])}원 → {fmt(s['sale'])}원" if s["orig"] > s["sale"] else f"💰 {fmt(s['sale'])}원"   # 정가 모르면 할인가만
     deal = " · ".join(x for x in [f"{s['pct']}% 할인" if s["pct"] else "", f"{s['per_word']} {fmt(s['per'])}원" if s["per"] else ""] if x)
     trust = " · ".join(x for x in [
         f"⭐ {s['rating']:.1f} (리뷰 {s['reviews']:,}개)" if s.get("rating") and s.get("reviews") else "",
