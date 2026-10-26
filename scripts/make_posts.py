@@ -147,7 +147,7 @@ def fetch_meta(link):
     return meta
 
 
-# ---------- 상품 정보 정리 (도구 today-sale-maker.html 과 같은 규칙) ----------
+# ---------- 상품 정보 정리 ----------
 def auto_display(name):
     parts = [p.strip() for p in name.split(",") if p.strip()]
     parts = [p for p in parts if not re.match(r"^1\s*(개|팩|박스|세트|봉|통|병)$", p)]
@@ -258,7 +258,7 @@ def roundup_post(products):
     return "\n".join(lines), reply
 
 
-# ---------- 4:5 이미지 카드 (도구의 drawStill과 같은 디자인) ----------
+# ---------- 4:5 이미지 카드 (캡처가 없을 때 대체용) ----------
 BG = (197, 229, 232)   # 카드 배경 #C5E5E8
 Y, INK, SALE, WHITE, GREY = (255, 216, 61), (23, 25, 30), (216, 38, 28), (255, 255, 255), (90, 82, 67)
 
