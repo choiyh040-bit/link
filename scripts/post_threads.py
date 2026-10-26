@@ -171,6 +171,35 @@ def parse_body(body):
     return text, images, reply.strip()
 
 
+MAX_CAROUSEL = 20
+
+
+def public_url(number, url, idx):
+    """Meta가 읽을 수 있는 이미지 주소. 저장소 밖 이미지는 받아서 images/ 에 올린다."""
+    if url.startswith(f"https://raw.githubusercontent.com/{REPO}/"):
+        return url
+    data, ctype = download(url)
+    stored = store_image(f"{number}-{idx}", data, ctype)
+    time.sleep(3)
+    return stored
+
+
+def split_reply(reply):
+    """빈 줄 단위 문단을 500자 안쪽 덩어리로 묶는다."""
+    chunks, cur = [], ""
+    for para in [p.strip() for p in reply.split("\n\n") if p.strip()]:
+        if len(para) > MAX_CHARS:
+            raise PostError(f"댓글 문단 하나가 {len(para)}자예요. {MAX_CHARS}자 안으로 줄여 주세요.")
+        cand = f"{cur}\n\n{para}" if cur else para
+        if len(cand) > MAX_CHARS:
+            chunks.append(cur)
+            cand = para
+        cur = cand
+    if cur:
+        chunks.append(cur)
+    return chunks
+
+
 def handle(issue, user_id):
     number = issue["number"]
     text, images, reply = parse_body(issue.get("body"))
@@ -178,24 +207,29 @@ def handle(issue, user_id):
         raise PostError("본문에 게시할 글이 없어요.")
     if len(text) > MAX_CHARS:
         raise PostError(f"글이 {len(text)}자예요. 스레드는 {MAX_CHARS}자까지라 줄여 주세요.")
-    if images:
-        if images[0].startswith(f"https://raw.githubusercontent.com/{REPO}/"):
-            url = images[0]   # make_posts.py가 이미 저장소에 올린 카드
-        else:
-            data, ctype = download(images[0])
-            url = store_image(number, data, ctype)
-            time.sleep(3)
-        media_id = publish(user_id, {"media_type": "IMAGE", "image_url": url, "text": text})
+    urls = [public_url(number, u, i) for i, u in enumerate(images[:MAX_CAROUSEL], 1)]
+    if len(urls) >= 2:   # 여러 장이면 넘겨 보기(캐러셀)
+        children = []
+        for u in urls:
+            cid = th("POST", f"/{user_id}/threads", {"media_type": "IMAGE", "image_url": u, "is_carousel_item": "true"})["id"]
+            wait_ready(cid)
+            children.append(cid)
+        media_id = publish(user_id, {"media_type": "CAROUSEL", "children": ",".join(children), "text": text})
+    elif urls:
+        media_id = publish(user_id, {"media_type": "IMAGE", "image_url": urls[0], "text": text})
     else:
         media_id = publish(user_id, {"media_type": "TEXT", "text": text})
     link = th("GET", f"/{media_id}", {"fields": "permalink"}).get("permalink", "")
     note = ""
     if reply:
         try:
-            publish(user_id, {"media_type": "TEXT", "text": reply, "reply_to_id": media_id})
-            note = "\n- 첫 댓글도 달았어요."
+            parent = media_id
+            chunks = split_reply(reply)
+            for chunk in chunks:   # 500자가 넘으면 댓글에 댓글로 이어 단다
+                parent = publish(user_id, {"media_type": "TEXT", "text": chunk, "reply_to_id": parent})
+            note = f"\n- 링크 댓글도 달았어요 ({len(chunks)}개)."
         except PostError as e:
-            note = f"\n- ⚠️ 본문은 올라갔지만 첫 댓글은 실패했어요: {e}"
+            note = f"\n- ⚠️ 본문은 올라갔지만 링크 댓글은 실패했어요. 링크가 없는 글이 되니 직접 댓글을 달아 주세요: {e}"
     comment(number, f"✅ 스레드에 올렸어요: {link or media_id}{note}\n\n---\n_오늘의 할인 자동 게시_")
     gh("PATCH", f"/repos/{REPO}/issues/{number}", {"state": "closed", "state_reason": "completed"})
 

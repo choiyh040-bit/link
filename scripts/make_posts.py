@@ -2,17 +2,23 @@
 """상품 등록 이슈를 읽어 스레드 게시 초안 이슈를 만든다.
 
 상품 등록 이슈
-  제목: '상품'으로 시작 (예: 상품 10/23). '상품 바로예약'이면 승인 없이 바로 예약.
-  본문: 토스 쉐어링크 공유 문구를 그대로 붙이고, 링크 바로 아래 줄에 가격을 적는다.
+  제목: '상품'으로 시작 (예: 상품 10/23). '바로'가 들어가면 승인 없이 바로 예약, '따로'가 들어가면 상품마다 따로 게시.
+  본문: 토스 쉐어링크 공유 문구를 그대로 붙이고, 링크 바로 아래 줄에 가격, 그 아래에 토스 앱 캡처를 붙인다.
       ✱ 이 포스팅은 토스쇼핑 쉐어링크 활동의 일환으로, …
-      양계장사람들 무항생제 계란, 대란, 60구, 1개
-      https://toss.shopping/_m/D54kVLUt
-      15900/26900          ← 할인가/정가 (정가 없으면 15900만)
-  여러 상품을 이어서 붙여도 된다.
+      크리스탈 생수, 무라벨, 2L, 12개
+      https://toss.shopping/_m/D7AMJNwi
+      5350/18000           ← 할인가/정가 (정가 없으면 5350/70% 또는 5350)
+      한마디: 첫 줄 직접 쓰기  ← 선택. 없으면 자동
+      (토스 앱 상품 화면 캡처)  ← 선택. 없으면 디자인 카드
+  여러 상품을 이어서 붙이면 'BEST N' 모음 글 하나로 묶는다.
+
+게시 형식 (2026-10-26 레퍼런스 반영)
+  본문: '#광고' + 첫 한마디 + 가격·개당 가격·리뷰 + 이미지(캡처, 여러 장이면 넘겨 보기)
+  댓글: 광고 표시 전체 문구 + '⬇️상품명 가격' + 링크
 
 하는 일
   1. 링크에서 상품명·대표 사진·평점·리뷰 수·순위를 가져온다 (가격은 토스 웹에 없어서 사람이 적는다)
-  2. 글과 4:5 이미지 카드를 만들고 카드를 images/cards/ 에 저장한다
+  2. 캡처는 images/shots/, 캡처가 없는 상품은 디자인 카드를 images/cards/ 에 저장한다
   3. 비어 있는 게시 시간대에 '초안 M/D HH:MM 이름' 이슈를 만든다
   4. 상품 등록 이슈에 '승인' 댓글이 달리면 그 초안들을 '예약'으로 바꾼다 → post_threads.py가 게시
 
@@ -32,7 +38,7 @@ import urllib.request
 from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, os.path.dirname(__file__))
-from post_threads import KST, PostError, comment, gh, http  # noqa: E402
+from post_threads import IMG_MD, IMG_TAG, KST, REPLY_MARK, PostError, comment, download, gh, http  # noqa: E402
 
 REPO = os.environ.get("GITHUB_REPOSITORY", "")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +52,7 @@ DONE_PREFIX = "상품(처리됨)"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
 URL_RE = re.compile(r"https?://(?:toss\.shopping|sharelink\.toss\.im|[\w.-]*toss\.im)/[^\s)\]]+")   # 토스 링크만 (다른 주소는 무시)
+HOOK_RE = re.compile(r"^한마디\s*[:：]\s*(.+)$")
 PRICE_RE = re.compile(r"^\s*(\d[\d,]*)\s*원?\s*(?:/\s*(\d[\d,]*)\s*(원|%)?)?\s*$")   # 할인가 / 정가 또는 할인율%
 
 
@@ -55,20 +62,33 @@ def fmt(n):
 
 # ---------- 붙여 넣은 공유 문구 해석 ----------
 def parse_batch(body):
-    items, pending, last = [], {"name": "", "disc": "", "price": None}, None
-    for raw in (body or "").replace("\r\n", "\n").split("\n"):
+    items, pending, last = [], {"name": "", "disc": "", "price": None, "hook": "", "shots": []}, None
+    body = re.sub(r"<!--.*?-->", "", (body or "").replace("\r\n", "\n"), flags=re.S)
+    for raw in body.split("\n"):
         line = raw.strip()
         if not line:
+            continue
+        shots = [m.group(1) for m in IMG_MD.finditer(line)] + [m.group(1) for m in IMG_TAG.finditer(line)]
+        if shots:   # 붙여 넣은 캡처: 바로 앞 상품의 것 (첫 상품 앞이면 다음 상품의 것)
+            (last["shots"] if last else pending["shots"]).extend(shots)
+            continue
+        hook = HOOK_RE.match(line)
+        if hook:
+            if last and not last["hook"]:
+                last["hook"] = hook.group(1).strip()
+            else:
+                pending["hook"] = hook.group(1).strip()
             continue
         url = URL_RE.search(line)
         price = PRICE_RE.match(line)
         if url:
             last = {"name": pending["name"], "disc": pending["disc"] or DISCLOSURE,
-                    "link": url.group(0), "sale": None, "orig": None, "pct": None}
+                    "link": url.group(0), "sale": None, "orig": None, "pct": None,
+                    "hook": pending["hook"], "shots": pending["shots"]}
             if pending["price"]:
                 last["sale"], last["orig"], last["pct"] = pending["price"]
             items.append(last)
-            pending = {"name": "", "disc": "", "price": None}
+            pending = {"name": "", "disc": "", "price": None, "hook": "", "shots": []}
         elif price:
             second = int(price.group(2).replace(",", "")) if price.group(2) else None
             if price.group(3) == "%":   # 토스 앱에 정가 없이 할인율만 보일 때: 5350/70%
@@ -83,6 +103,11 @@ def parse_batch(body):
             pending["disc"] = line
         else:
             pending["name"] = line
+    # 캡처를 맨 끝에 몰아서 붙였으면 상품 순서대로 하나씩 나눠 준다
+    all_shots = [u for it in items for u in it["shots"]]
+    if len(items) > 1 and len(all_shots) == len(items) and any(not it["shots"] for it in items):
+        for it, u in zip(items, all_shots):
+            it["shots"] = [u]
     for it in items:   # 정가/할인가를 거꾸로 적은 경우
         if it["orig"] and it["sale"] and it["orig"] < it["sale"]:
             it["sale"], it["orig"] = it["orig"], it["sale"]
@@ -176,31 +201,61 @@ def build(item, meta):
     s["per_word"] = PER_WORD.get(s["unit"], "개당")
     s["rating"], s["reviews"], s["rank"] = meta.get("rating"), meta.get("reviews"), meta.get("rank", "")
     s["image"] = meta.get("image", "")
+    s["hook"], s["shots"] = item.get("hook", ""), item.get("shots", [])
     return s
 
 
-def post_text(s):
-    if s["per"] and s["short"]:
-        hook = f"{s['short']} 1{s['per_word'].replace('당', '')} {fmt(s['per'])}원?"
+ONE = {"개": "한 개", "구": "한 알", "알": "한 알", "장": "한 장", "매": "한 장", "캔": "한 캔",
+       "병": "한 병", "롤": "한 롤", "팩": "한 팩", "포": "한 포"}
+
+
+def pick(options, key):
+    """같은 상품이면 늘 같은 문장, 상품마다 다른 문장 (무작위 대신 링크로 고른다)."""
+    return options[sum(map(ord, key)) % len(options)]
+
+
+def hook_lines(s):
+    """본문 첫 한마디. 말투는 중간(B). 사실(가격·할인율·리뷰)만 쓰고 경험담은 지어내지 않는다."""
+    if s["hook"]:
+        return [x.strip() for x in s["hook"].split("/") if x.strip()]
+    short = s["short"] or "이거"
+    first = [f"오늘 토스 {short} 특가 실화임?", f"토스 {short} 이 가격 실화?", f"{short} 필요한 사람 지금 토스 보세요"]
+    if s["pct"] >= 70:
+        first.append(f"토스 {short} {s['pct']}% 할인 실화임?")
+    lines = [pick(first, s["link"]), ""]
+    lines.append(f"{short} {s['qty']}{s['unit']}에 {fmt(s['sale'])}원" if s["qty"] > 1 else f"{short} {fmt(s['sale'])}원")
+    if s["per"]:
+        lines.append(f"{ONE.get(s['unit'], '한 개')}에 {fmt(s['per'])}원꼴" + (f", {s['pct']}% 할인" if s["pct"] else ""))
     elif s["pct"]:
-        hook = f"{s['pct']}% 할인, {fmt(s['sale'])}원"
+        lines.append(f"정가 {fmt(s['orig'])}원에서 {s['pct']}% 할인" if s["orig"] else f"{s['pct']}% 할인")
+    if s.get("reviews") and s["reviews"] >= 100 and s.get("rating"):
+        lines.append(f"리뷰 {s['reviews']:,}개에 평점 {s['rating']:.1f}")
     else:
-        hook = s["short"] or (s["display"][0] if s["display"] else "")
-    d = s["display"]
-    price = f"💰 {fmt(s['orig'])}원 → {fmt(s['sale'])}원" if s["orig"] > s["sale"] else f"💰 {fmt(s['sale'])}원"   # 정가 모르면 할인가만
-    deal = " · ".join(x for x in [f"{s['pct']}% 할인" if s["pct"] else "", f"{s['per_word']} {fmt(s['per'])}원" if s["per"] else ""] if x)
-    trust = " · ".join(x for x in [
-        f"⭐ {s['rating']:.1f} (리뷰 {s['reviews']:,}개)" if s.get("rating") and s.get("reviews") else "",
-        s["rank"]] if x)
-    paras = [
-        [s["disc"]],
-        [hook],
-        [f"📦 {d[0]}" if d else ""] + d[1:],
-        [price, deal],
-        [trust],
-        [f"🔗 {s['link']}"],
-    ]
-    return "\n\n".join("\n".join(x for x in p if x) for p in paras if any(p))
+        lines.append(pick(["특가는 금방 끝날 수도 있어요", "필요하면 미리 쟁여 두세요"], s["link"]))
+    return lines
+
+
+def item_line(s):
+    return f"⬇️ {s['name']} {fmt(s['sale'])}원\n{s['link']}"
+
+
+def single_post(s):
+    main = "\n".join(["#광고"] + hook_lines(s))
+    reply = f"{s['disc']}\n\n{item_line(s)}"
+    return main, reply
+
+
+def roundup_post(products):
+    n = len(products)
+    best = max((p["pct"] for p in products), default=0)
+    lines = ["#광고", f"오늘 토스 핫딜 BEST {n}", ""]
+    if best:
+        lines.append(f"최대 {best}% 할인까지 모아 봤어요")
+    for p in products:
+        lines.append(f"· {p['short']} {fmt(p['sale'])}원" + (f" ({p['pct']}%↓)" if p["pct"] else ""))
+    lines += ["", "링크는 댓글에 👇"]
+    reply = products[0]["disc"] + "\n\n" + "\n\n".join(item_line(p) for p in products)
+    return "\n".join(lines), reply
 
 
 # ---------- 4:5 이미지 카드 (도구의 drawStill과 같은 디자인) ----------
@@ -351,6 +406,27 @@ def save_card(png, path):
     return f"https://raw.githubusercontent.com/{REPO}/{res['commit']['sha']}/{path}"
 
 
+def save_shot(url, path_base):
+    data, ctype = download(url)
+    ext = "png" if "png" in ctype else "jpg" if ("jpeg" in ctype or "jpg" in ctype) else None
+    if not ext:
+        raise PostError(f"캡처는 PNG나 JPG만 쓸 수 있어요 (받은 형식: {ctype or '알 수 없음'}).")
+    return save_card(data, f"{path_base}.{ext}")
+
+
+def images_for(s, number, idx, now):
+    """상품 이미지: 붙여 준 캡처가 있으면 캡처, 없으면 디자인 카드."""
+    if s["shots"]:
+        return [save_shot(u, f"images/shots/{now:%Y%m%d}-b{number}-{idx}-{j}") for j, u in enumerate(s["shots"], 1)]
+    card = render_card(s, load_photo(s["image"]))
+    return [save_card(card, f"images/cards/{now:%Y%m%d}-b{number}-{idx}.png")]
+
+
+def draft_body(main, urls, reply, number):
+    pics = "\n".join(f"![이미지]({u})" for u in urls)
+    return f"{main}\n\n{pics}\n\n{REPLY_MARK}\n{reply}\n\n{BATCH_MARK.format(number)}"
+
+
 def open_issues():
     return [i for i in gh("GET", f"/repos/{REPO}/issues?state=open&per_page=100") if "pull_request" not in i]
 
@@ -369,23 +445,34 @@ def process_batch(issue):
 
     now = dt.datetime.now(KST)
     direct = "바로" in issue["title"]
+    separate = "따로" in issue["title"] or len(items) == 1
     prefix = "예약" if direct else "초안"
-    slots = next_slots(len(items), taken_slots(open_issues(), now), now)
+    products = [build(it, fetch_meta(it["link"])) for it in items]
+    groups = [[p] for p in products] if separate else [products]
+    slots = next_slots(len(groups), taken_slots(open_issues(), now), now)
     rows = []
-    for idx, (it, when) in enumerate(zip(items, slots), 1):
-        meta = fetch_meta(it["link"])
-        s = build(it, meta)
-        card = render_card(s, load_photo(s["image"]))
-        url = save_card(card, f"images/cards/{now:%Y%m%d}-b{number}-{idx}.png")
-        title = f"{prefix} {when.month}/{when.day} {when:%H:%M} {s['short']}".strip()
-        body_text = f"{post_text(s)}\n\n![카드]({url})\n\n{BATCH_MARK.format(number)}"
-        new = gh("POST", f"/repos/{REPO}/issues", {"title": title, "body": body_text})
-        rows.append(f"| {when.month}/{when.day} {when:%H:%M} | {s['short']} | {fmt(s['sale'])}원 | #{new['number']} |")
+    for gi, (group, when) in enumerate(zip(groups, slots), 1):
+        urls = []
+        for pi, p in enumerate(group, 1):
+            urls += images_for(p, number, f"{gi}-{pi}", now)
+        if len(group) == 1:
+            main, reply = single_post(group[0])
+            label = group[0]["short"]
+        else:
+            main, reply = roundup_post(group)
+            label = f"핫딜 BEST {len(group)}"
+        if len(main) > 500:
+            raise PostError(f"본문이 {len(main)}자라 스레드 제한(500자)을 넘어요. 상품 수를 줄여 주세요.")
+        title = f"{prefix} {when.month}/{when.day} {when:%H:%M} {label}".strip()
+        new = gh("POST", f"/repos/{REPO}/issues", {"title": title, "body": draft_body(main, urls, reply, number)})
+        names = ", ".join(p["short"] for p in group)
+        shots = "캡처" if all(p["shots"] for p in group) else ("카드" if not any(p["shots"] for p in group) else "캡처+카드")
+        rows.append(f"| {when.month}/{when.day} {when:%H:%M} | {names} | {shots} | #{new['number']} |")
         print("만듦:", title)
 
     gh("PATCH", f"/repos/{REPO}/issues/{number}", {"title": f"{DONE_PREFIX} {issue['title'][2:].strip()}".strip()})
     head = "✅ 바로 예약했어요." if direct else "✅ 초안을 만들었어요. 확인한 뒤 이 이슈에 **`승인`** 댓글을 달면 모두 예약으로 바뀌어요."
-    comment(number, head + "\n\n| 게시 시각 | 상품 | 가격 | 초안 |\n|---|---|---|---|\n" + "\n".join(rows)
+    comment(number, head + "\n\n| 게시 시각 | 상품 | 이미지 | 초안 |\n|---|---|---|---|\n" + "\n".join(rows)
             + "\n\n- 고칠 게 있으면 각 초안 이슈의 본문을 직접 고치면 돼요.\n- 빼고 싶은 상품은 그 초안 이슈를 닫으면 돼요.")
     if direct:
         gh("PATCH", f"/repos/{REPO}/issues/{number}", {"state": "closed", "state_reason": "completed"})
