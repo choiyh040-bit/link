@@ -200,6 +200,7 @@ def post_text(s):
 
 
 # ---------- 4:5 이미지 카드 (도구의 drawStill과 같은 디자인) ----------
+BG = (197, 229, 232)   # 카드 배경 #C5E5E8
 Y, INK, SALE, WHITE, GREY = (255, 216, 61), (23, 25, 30), (216, 38, 28), (255, 255, 255), (90, 82, 67)
 
 
@@ -208,11 +209,11 @@ def font(name, size):
 
 
 def disp(size):
-    return font("BlackHanSans-Regular.ttf", size)
+    return font("SUIT-Heavy.ttf", size)
 
 
 def body(size, bold=True):
-    return font("IBMPlexSansKR-Bold.ttf" if bold else "IBMPlexSansKR-SemiBold.ttf", size)
+    return font("SUIT-ExtraBold.ttf" if bold else "SUIT-Bold.ttf", size)
 
 
 def fit(text, maker, max_w, start, minimum):
@@ -246,14 +247,7 @@ def cover(img, size):
 
 def render_card(s, photo):
     W, H = 1080, 1350
-    im = Image.new("RGB", (W, H), Y)
-    d = ImageDraw.Draw(im)
-    # 사선 무늬
-    stripe = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    sd = ImageDraw.Draw(stripe)
-    for i in range(-H, W, 90):
-        sd.line([(i, H), (i + H, 0)], fill=INK + (18,), width=18)
-    im.paste(stripe, (0, 0), stripe)
+    im = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(im)
 
     # 계정 이름 + 날짜
@@ -303,10 +297,10 @@ def render_card(s, photo):
         d.text((W // 2, 1040), t, font=f, fill=GREY, anchor="mm")
         d.line([(W / 2 - tw / 2 - 10, 1042), (W / 2 + tw / 2 + 10, 1038)], fill=SALE, width=9)
     if s["sale"]:
-        d.text((W // 2, 1145), f"{fmt(s['sale'])}원", font=disp(150), fill=SALE, anchor="mm")
+        d.text((W // 2, 1132), f"{fmt(s['sale'])}원", font=disp(136), fill=SALE, anchor="mm")
     if s["per"]:
         f = disp(54)
-        t = f"{s['per_word']} {fmt(s['per'])}원 | {s['qty']}{s['unit']}"   # 이 글꼴엔 가운뎃점(·)이 없음
+        t = f"{s['per_word']} {fmt(s['per'])}원 · {s['qty']}{s['unit']}"
         tw = f.getlength(t) + 72
         d.rounded_rectangle([W / 2 - tw / 2, 1232, W / 2 + tw / 2, 1324], radius=46, fill=INK)
         d.text((W // 2, 1280), t, font=f, fill=Y, anchor="mm")
