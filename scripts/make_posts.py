@@ -51,7 +51,7 @@ BATCH_MARK = "<!-- batch:{} -->"
 DONE_PREFIX = "상품(처리됨)"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
-URL_RE = re.compile(r"https?://(?:toss\.shopping|sharelink\.toss\.im|[\w.-]*toss\.im)/[^\s)\]]+")   # 토스 링크만 (다른 주소는 무시)
+URL_RE = re.compile(r"https?://(?:toss\.shopping|sharelink\.toss\.im|[\w.-]*toss\.im)/[A-Za-z0-9_\-./?=&%#]+")   # 토스 링크만 (다른 주소는 무시)
 HOOK_RE = re.compile(r"^한마디\s*[:：]\s*(.+)$")
 PRICE_RE = re.compile(r"^\s*(\d[\d,]*)\s*원?\s*(?:/\s*(\d[\d,]*)\s*(원|%)?)?\s*$")   # 할인가 / 정가 또는 할인율%
 
@@ -406,12 +406,25 @@ def save_card(png, path):
     return f"https://raw.githubusercontent.com/{REPO}/{res['commit']['sha']}/{path}"
 
 
+def trim_screenshot(data):
+    """토스 앱 상품 화면 캡처(세로로 긴 폰 화면)에서 위쪽 버튼 줄과 아래쪽 적립·뽑기·구매 버튼 영역을 잘라 낸다."""
+    try:
+        im = Image.open(io.BytesIO(data)).convert("RGB")
+    except Exception:
+        raise PostError("캡처 이미지를 열 수 없어요. PNG나 JPG로 다시 붙여 주세요.")
+    w, h = im.size
+    if h / w >= 1.8:   # 폰 전체 화면 캡처일 때만 (이미 잘린 이미지는 그대로)
+        im = im.crop((0, round(h * 0.06), w, round(h * 0.805)))
+    out = io.BytesIO()
+    im.save(out, "JPEG", quality=92)
+    return out.getvalue()
+
+
 def save_shot(url, path_base):
     data, ctype = download(url)
-    ext = "png" if "png" in ctype else "jpg" if ("jpeg" in ctype or "jpg" in ctype) else None
-    if not ext:
+    if not any(t in ctype for t in ("png", "jpeg", "jpg")):
         raise PostError(f"캡처는 PNG나 JPG만 쓸 수 있어요 (받은 형식: {ctype or '알 수 없음'}).")
-    return save_card(data, f"{path_base}.{ext}")
+    return save_card(trim_screenshot(data), f"{path_base}.jpg")
 
 
 def images_for(s, number, idx, now):
