@@ -246,33 +246,78 @@ def no_emoji(text):
     return re.sub(r"\s{2,}", " ", EMOJI_RE.sub("", text)).strip()
 
 
+# 상품 종류별 첫 줄(상황)과 쓰는 때. 첫 줄에는 상품 이름을 넣지 않는다 (2026-10-27 레퍼런스: 쿠파스 자동화 7원칙).
+# 누구나 공감하는 상황만 쓰고, 써 본 척하는 문장은 넣지 않는다.
+CATEGORIES = [
+    ("고기", r"삼겹|목살|한우|돼지|소고기|갈비|등심|닭|오리|양고기|우삼겹|차돌",
+     ["오늘 저녁 메뉴 고민 끝남", "집에서 고기 굽는 날임", "주말 캠핑 고기 아직 안 샀으면 이거 봐봐"],
+     "굽기만 하면 바로 한 끼"),
+    ("음료", r"생수|먹는샘물|탄산|콜라|사이다|주스|차,|수염차|보리차|커피|우유|두유|음료",
+     ["물 떨어질 때마다 마트 가는 거 귀찮음", "무거운 거 들고 오기 싫은 사람 손", "집에 음료 쟁여두는 타입이면 봐봐"],
+     "박스째 쟁여두면 한동안 걱정 없음"),
+    ("계란", r"계란|달걀|메추리알",
+     ["계란 진짜 금방 떨어짐", "계란 한 판 사면 일주일도 못 감"],
+     "아침마다 계란 프라이 해도 넉넉함"),
+    ("반찬", r"반찬|장조림|김치|만두|국,|찌개|밀키트|즉석|볶음밥|돈까스|떡볶이|어묵",
+     ["퇴근하고 밥 차리기 싫은 날", "반찬 하기 귀찮은 날 있잖음", "냉동실에 하나 있으면 든든함"],
+     "밥만 있으면 한 끼 해결"),
+    ("과일", r"감귤|귤|사과|배,|복숭아|포도|딸기|바나나|키위|망고|토마토|과일",
+     ["요즘 과일값 생각하면 이건 봐야 됨", "후식 없으면 허전한 사람 손"],
+     "식후에 하나씩 까먹기 좋음"),
+    ("수납", r"수납|정리함|리빙박스|선반|행거|바구니|보관함",
+     ["계절 바뀔 때마다 이불 둘 데 없음", "옷장 정리하다 포기한 적 있으면"],
+     "계절 지난 옷이랑 이불 넣어두기 좋음"),
+    ("침구", r"토퍼|이불|매트|베개|담요|전기요|패드",
+     ["점점 추워짐", "이불 밖은 위험한 계절 옴"],
+     "바닥 차가워지는 밤에 딱임"),
+    ("생필품", r"물티슈|휴지|화장지|세제|샴푸|린스|바디워시|칫솔|치약|키친타월|섬유유연제|캡슐",
+     ["생필품은 꼭 급할 때 떨어짐", "어차피 계속 쓰는 거라 쌀 때 사두는 게 이득임"],
+     "어차피 매일 쓰는 거임"),
+]
+DEFAULT_CAT = ("기타", "", ["이건 쌀 때 사두는 게 맞음", "생활비 아끼는 중이면 이거 봐봐"], "")
+
+
+def category(name):
+    for cat in CATEGORIES:
+        if re.search(cat[1], name):
+            return cat
+    return DEFAULT_CAT
+
+
 def hook_lines(s):
-    """본문 첫 한마디. 말투는 스레드체(음슴체: ~임, ~됨, ~함 + ;; ㄷㄷ). 사실(가격·할인율·리뷰)만 쓰고 경험담은 지어내지 않는다."""
+    """본문. 스레드체(음슴체: ~임, ~됨, ~함 + ;; ㄷㄷ), 이모지 없음, 사실만 쓴다.
+    1줄: 상황(상품 이름 없음) 또는 사용자 한마디 / 2줄: 이름 + 단가 충격 / 빈 줄 / 쓰는 때 / 가격·할인 / 리뷰·순위"""
     short = s["short"] or "이거"
-    if s["hook"]:   # 직접 쓴 한마디는 첫 문구만 바꾸고 가격 줄은 그대로 둔다
-        lines = [no_emoji(x) for x in s["hook"].split("/") if no_emoji(x)] + [""]
+    _, _, situations, use = category(s["name"])
+    if s["hook"]:   # 직접 쓴 한마디는 상황 줄만 바꾸고 나머지는 그대로 둔다
+        lines = [no_emoji(x) for x in s["hook"].split("/") if no_emoji(x)]
     else:
-        first = [f"토스 {short} 가격 실화냐;;", f"오늘 토스 {short} 미쳤음ㄷㄷ", f"{short} 이 가격이면 그냥 쟁여야 됨"]
-        if s.get("per100"):
-            first = [f"{short} 100g에 {s['per100'] // 100 * 100:,}원대 실화냐;;", f"{short} 100g에 {fmt(s['per100'])}원임ㄷㄷ"]
-        if s["pct"] >= 70:
-            first.append(f"토스 {short} {s['pct']}% 할인 미쳤음;;")
-        lines = [pick(first, s["link"]), ""]
+        lines = [pick(situations, s["link"])]
     weight = "" if s.get("bundle") else next((x.strip() for x in s["name"].split(",") if re.match(r"^\d+(?:\.\d+)?\s*(kg|g)$", x.strip(), re.I)), "")
-    if s["qty"] > 1:
-        lines.append(f"{short} {s['qty']}{s['unit']}에 {fmt(s['sale'])}원")
-    else:
-        lines.append(f"{short} {weight + ' ' if weight else ''}{fmt(s['sale'])}원")
+    shown_pct = False
     if s.get("per100") and not s["per"]:
-        lines.append(f"100g에 {fmt(s['per100'])}원꼴" + (f", {s['pct']}% 할인임" if s["pct"] else "임"))
+        lines.append(pick([f"{short} 100g에 {s['per100'] // 100 * 100:,}원대 실화냐;;", f"{short} 100g에 {fmt(s['per100'])}원꼴임ㄷㄷ"], s["link"]))
     elif s["per"]:
-        lines.append(f"{ONE.get(s['unit'], '한 개')}에 {fmt(s['per'])}원꼴" + (f", {s['pct']}% 할인임" if s["pct"] else "임"))
-    elif s["pct"]:
-        lines.append(f"정가 {fmt(s['orig'])}원에서 {s['pct']}% 할인임" if s["orig"] else f"{s['pct']}% 할인임")
-    if s.get("reviews") and s["reviews"] >= 100 and s.get("rating"):
-        lines.append(f"리뷰 {s['reviews']:,}개에 평점 {s['rating']:.1f}임")
+        lines.append(f"{short} {ONE.get(s['unit'], '한 개')}에 {fmt(s['per'])}원꼴임ㄷㄷ")
+    elif s["pct"] >= 50:
+        lines.append(f"{short} {s['pct']}% 할인 실화냐;;")
+        shown_pct = True
     else:
-        lines.append(pick(["특가라 금방 끝날 수도 있음", "필요하면 미리 쟁여두는 거 추천함"], s["link"]))
+        lines.append(f"{short} {weight + ' ' if weight else ''}{fmt(s['sale'])}원임")
+    lines.append("")
+    if use:
+        lines.append(use)
+    amount = f"{s['qty']}{s['unit']}에 " if s["qty"] > 1 else (f"{weight} " if weight else "")
+    if s["orig"] > s["sale"] and shown_pct:
+        lines.append(f"{amount}{fmt(s['sale'])}원, 정가 {fmt(s['orig'])}원임")
+    elif s["orig"] > s["sale"]:
+        lines.append(f"{amount}{fmt(s['sale'])}원, 정가 {fmt(s['orig'])}원에서 {s['pct']}% 할인임")
+    elif shown_pct:
+        lines.append(f"{amount}{fmt(s['sale'])}원임")
+    else:
+        lines.append(f"{amount}{fmt(s['sale'])}원" + (f", {s['pct']}% 할인임" if s["pct"] else "임"))
+    trust = [x for x in [s.get("rank", ""), f"리뷰 {s['reviews']:,}개 평점 {s['rating']:.1f}" if s.get("reviews") and s["reviews"] >= 100 and s.get("rating") else ""] if x]
+    lines.append(" · ".join(trust) if trust else pick(["특가라 금방 끝날 수도 있음", "필요하면 미리 쟁여두는 거 추천함"], s["link"]))
     return lines
 
 

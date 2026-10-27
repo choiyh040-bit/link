@@ -29,6 +29,7 @@ THREADS = "https://graph.threads.net/v1.0"
 GITHUB = "https://api.github.com"
 KST = dt.timezone(dt.timedelta(hours=9))
 MAX_PER_RUN = 3          # 한 번에 너무 많이 올라가 스팸으로 보이지 않게
+MIN_GAP = dt.timedelta(hours=2)   # 시간 예약 글끼리 최소 간격 (붙여 올리면 앞 글이 묻힌다). '예약 지금'은 예외
 MAX_CHARS = 500          # 스레드 글자 수 제한
 REPLY_MARK = "=== 첫 댓글 ==="
 
@@ -234,6 +235,18 @@ def handle(issue, user_id):
     gh("PATCH", f"/repos/{REPO}/issues/{number}", {"state": "closed", "state_reason": "completed"})
 
 
+def last_post_time(user_id):
+    """내 계정의 가장 최근 게시 시각 (못 읽으면 None)."""
+    try:
+        data = th("GET", f"/{user_id}/threads", {"fields": "timestamp", "limit": "1"}).get("data") or []
+    except PostError as e:
+        print("최근 게시 시각을 못 읽었어요:", e)
+        return None
+    if not data or not data[0].get("timestamp"):
+        return None
+    return dt.datetime.strptime(data[0]["timestamp"], "%Y-%m-%dT%H:%M:%S%z").astimezone(KST)
+
+
 def main():
     if not (REPO and GH_TOKEN):
         sys.exit("GITHUB_TOKEN / GITHUB_REPOSITORY가 없어요.")
@@ -272,10 +285,16 @@ def main():
         comment(i["number"], f"✅ 토큰 정상: @{me.get('username')} 계정에 올릴 수 있어요.")
         gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"state": "closed", "state_reason": "completed"})
 
+    last = last_post_time(me["id"])
     for i in queue[:MAX_PER_RUN]:
+        immediate = bool(re.match(r"^예약\s+(지금|바로)", i["title"].strip()))
+        if not immediate and last and now - last < MIN_GAP:
+            print(f"#{i['number']} 미룸: 마지막 게시 {last:%H:%M}, {MIN_GAP} 간격 지키는 중")
+            continue
         print(f"#{i['number']} 게시: {i['title']}")
         try:
             handle(i, me["id"])
+            last = dt.datetime.now(KST)
         except PostError as e:
             gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"title": "실패 " + i["title"]})
             comment(i["number"], f"❌ 올리지 못했어요.\n\n```\n{e}\n```\n고친 뒤 제목 맨 앞의 `실패`를 지우면 다시 시도해요.")
