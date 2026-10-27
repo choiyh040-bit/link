@@ -216,13 +216,14 @@ def pick(options, key):
 
 def hook_lines(s):
     """본문 첫 한마디. 말투는 중간(B). 사실(가격·할인율·리뷰)만 쓰고 경험담은 지어내지 않는다."""
-    if s["hook"]:
-        return [x.strip() for x in s["hook"].split("/") if x.strip()]
     short = s["short"] or "이거"
-    first = [f"오늘 토스 {short} 특가 실화임?", f"토스 {short} 이 가격 실화?", f"{short} 필요한 사람 지금 토스 보세요"]
-    if s["pct"] >= 70:
-        first.append(f"토스 {short} {s['pct']}% 할인 실화임?")
-    lines = [pick(first, s["link"]), ""]
+    if s["hook"]:   # 직접 쓴 한마디는 첫 문구만 바꾸고 가격 줄은 그대로 둔다
+        lines = [x.strip() for x in s["hook"].split("/") if x.strip()] + [""]
+    else:
+        first = [f"오늘 토스 {short} 특가 실화임?", f"토스 {short} 이 가격 실화?", f"{short} 필요한 사람 지금 토스 보세요"]
+        if s["pct"] >= 70:
+            first.append(f"토스 {short} {s['pct']}% 할인 실화임?")
+        lines = [pick(first, s["link"]), ""]
     lines.append(f"{short} {s['qty']}{s['unit']}에 {fmt(s['sale'])}원" if s["qty"] > 1 else f"{short} {fmt(s['sale'])}원")
     if s["per"]:
         lines.append(f"{ONE.get(s['unit'], '한 개')}에 {fmt(s['per'])}원꼴" + (f", {s['pct']}% 할인" if s["pct"] else ""))
