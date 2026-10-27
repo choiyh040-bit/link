@@ -187,6 +187,23 @@ def guess_qty(name):
     return 1, "개"
 
 
+def guess_grams(name):
+    """총 무게(g). '1kg, 2개' → 2000, '200g, 5개' → 1000. 무게가 없으면 0."""
+    grams, mult = 0, 1
+    for seg in (x.strip() for x in re.split(r"\s\+\s", name)[0].split(",")):   # "A + B" 구성은 앞 상품만 ("1++" 등급은 그대로)
+        w = re.match(r"^(\d+(?:\.\d+)?)\s*(kg|g)$", seg, re.I)
+        if w:
+            grams = float(w.group(1)) * (1000 if w.group(2).lower() == "kg" else 1)
+            continue
+        c = re.match(r"^(\d+)\s*(개|팩|봉|박스|세트|통)$", seg)
+        if c:
+            mult *= int(c.group(1))
+    return round(grams * mult)
+
+
+COUNTABLE = {"구", "알", "매", "장", "캔", "병", "롤", "포"}   # 낱개 가격이 더 와닿는 단위
+
+
 PER_WORD = {"매": "장당", "장": "장당", "캔": "캔당", "병": "병당", "롤": "롤당", "팩": "팩당", "포": "포당"}
 
 
@@ -199,6 +216,13 @@ def build(item, meta):
     s["pct"] = item.get("pct") or (math.floor((1 - s["sale"] / s["orig"]) * 100) if s["orig"] > s["sale"] > 0 else 0)
     s["per"] = round(s["sale"] / s["qty"]) if s["qty"] > 1 and s["sale"] else 0
     s["per_word"] = PER_WORD.get(s["unit"], "개당")
+    bundle = bool(re.search(r"\s\+\s", name))   # "A + B" 묶음은 단위 가격을 계산하면 틀리기 쉬워서 뺀다
+    if bundle:
+        s["qty"], s["per"] = 1, 0
+    s["grams"] = 0 if bundle else guess_grams(name)
+    s["per100"] = int(s["sale"] / s["grams"] * 100 + 0.5) if s["grams"] >= 200 and s["sale"] else 0   # 토스와 같은 반올림
+    if s["per100"] and s["unit"] not in COUNTABLE:   # 고기·과일처럼 무게로 파는 건 100g 가격으로 보여 준다
+        s["per"] = 0
     s["rating"], s["reviews"], s["rank"] = meta.get("rating"), meta.get("reviews"), meta.get("rank", "")
     s["image"] = meta.get("image", "")
     s["hook"], s["shots"] = item.get("hook", ""), item.get("shots", [])
@@ -221,11 +245,19 @@ def hook_lines(s):
         lines = [x.strip() for x in s["hook"].split("/") if x.strip()] + [""]
     else:
         first = [f"오늘 토스 {short} 특가 실화임?", f"토스 {short} 이 가격 실화?", f"{short} 필요한 사람 지금 토스 보세요"]
+        if s.get("per100"):
+            first = [f"{short} 100g에 {s['per100'] // 100 * 100:,}원대?", f"{short} 100g에 {fmt(s['per100'])}원 실화?"]
         if s["pct"] >= 70:
             first.append(f"토스 {short} {s['pct']}% 할인 실화임?")
         lines = [pick(first, s["link"]), ""]
-    lines.append(f"{short} {s['qty']}{s['unit']}에 {fmt(s['sale'])}원" if s["qty"] > 1 else f"{short} {fmt(s['sale'])}원")
-    if s["per"]:
+    weight = next((x.strip() for x in s["name"].split(",") if re.match(r"^\d+(?:\.\d+)?\s*(kg|g)$", x.strip(), re.I)), "")
+    if s["qty"] > 1:
+        lines.append(f"{short} {s['qty']}{s['unit']}에 {fmt(s['sale'])}원")
+    else:
+        lines.append(f"{short} {weight + ' ' if weight else ''}{fmt(s['sale'])}원")
+    if s.get("per100") and not s["per"]:
+        lines.append(f"100g에 {fmt(s['per100'])}원꼴" + (f", {s['pct']}% 할인" if s["pct"] else ""))
+    elif s["per"]:
         lines.append(f"{ONE.get(s['unit'], '한 개')}에 {fmt(s['per'])}원꼴" + (f", {s['pct']}% 할인" if s["pct"] else ""))
     elif s["pct"]:
         lines.append(f"정가 {fmt(s['orig'])}원에서 {s['pct']}% 할인" if s["orig"] else f"{s['pct']}% 할인")
