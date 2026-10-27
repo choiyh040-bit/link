@@ -248,7 +248,9 @@ def single_post(s):
 def roundup_post(products):
     n = len(products)
     best = max((p["pct"] for p in products), default=0)
-    lines = ["#광고", f"오늘 토스 핫딜 BEST {n}", ""]
+    custom = next((p["hook"] for p in products if p["hook"]), "")   # 모음 글은 처음 나온 한마디를 머리말로
+    head = [x.strip() for x in custom.split("/") if x.strip()] if custom else [f"오늘 토스 핫딜 BEST {n}"]
+    lines = ["#광고"] + head + [""]
     if best:
         lines.append(f"최대 {best}% 할인까지 모아 봤어요")
     for p in products:
