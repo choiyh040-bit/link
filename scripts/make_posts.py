@@ -14,7 +14,7 @@
 
 게시 형식 (2026-10-26 레퍼런스 반영)
   본문: '#광고' + 첫 한마디 + 가격·개당 가격·리뷰 + 이미지(캡처, 여러 장이면 넘겨 보기)
-  댓글: 광고 표시 전체 문구 + '⬇️상품명 가격' + 링크
+  댓글: 광고 표시 전체 문구 + '상품명 가격' + 링크 (이모지는 쓰지 않는다)
 
 하는 일
   1. 링크에서 상품명·대표 사진·평점·리뷰 수·순위를 가져온다 (가격은 토스 웹에 없어서 사람이 적는다)
@@ -239,11 +239,18 @@ def pick(options, key):
     return options[sum(map(ord, key)) % len(options)]
 
 
+EMOJI_RE = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]")
+
+
+def no_emoji(text):
+    return re.sub(r"\s{2,}", " ", EMOJI_RE.sub("", text)).strip()
+
+
 def hook_lines(s):
     """본문 첫 한마디. 말투는 스레드체(음슴체: ~임, ~됨, ~함 + ;; ㄷㄷ). 사실(가격·할인율·리뷰)만 쓰고 경험담은 지어내지 않는다."""
     short = s["short"] or "이거"
     if s["hook"]:   # 직접 쓴 한마디는 첫 문구만 바꾸고 가격 줄은 그대로 둔다
-        lines = [x.strip() for x in s["hook"].split("/") if x.strip()] + [""]
+        lines = [no_emoji(x) for x in s["hook"].split("/") if no_emoji(x)] + [""]
     else:
         first = [f"토스 {short} 가격 실화냐;;", f"오늘 토스 {short} 미쳤음ㄷㄷ", f"{short} 이 가격이면 그냥 쟁여야 됨"]
         if s.get("per100"):
@@ -270,7 +277,7 @@ def hook_lines(s):
 
 
 def item_line(s):
-    return f"⬇️ {s['name']} {fmt(s['sale'])}원\n{s['link']}"
+    return f"{s['name']} {fmt(s['sale'])}원\n{s['link']}"
 
 
 def single_post(s):
@@ -283,13 +290,13 @@ def roundup_post(products):
     n = len(products)
     best = max((p["pct"] for p in products), default=0)
     custom = next((p["hook"] for p in products if p["hook"]), "")   # 모음 글은 처음 나온 한마디를 머리말로
-    head = [x.strip() for x in custom.split("/") if x.strip()] if custom else [f"오늘 토스 핫딜 BEST {n} 모아봄"]
+    head = [no_emoji(x) for x in custom.split("/") if no_emoji(x)] if custom else [f"오늘 토스 핫딜 BEST {n} 모아봄"]
     lines = ["#광고"] + head + [""]
     if best:
         lines.append(f"최대 {best}% 할인까지 있음ㄷㄷ")
     for p in products:
         lines.append(f"· {p['short']} {fmt(p['sale'])}원" + (f" ({p['pct']}%↓)" if p["pct"] else ""))
-    lines += ["", "링크는 댓글에 둠 👇"]
+    lines += ["", "링크는 댓글에 둠"]
     reply = products[0]["disc"] + "\n\n" + "\n\n".join(item_line(p) for p in products)
     return "\n".join(lines), reply
 
