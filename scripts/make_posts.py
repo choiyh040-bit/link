@@ -217,6 +217,7 @@ def build(item, meta):
     s["per"] = round(s["sale"] / s["qty"]) if s["qty"] > 1 and s["sale"] else 0
     s["per_word"] = PER_WORD.get(s["unit"], "개당")
     bundle = bool(re.search(r"\s\+\s", name))   # "A + B" 묶음은 단위 가격을 계산하면 틀리기 쉬워서 뺀다
+    s["bundle"] = bundle
     if bundle:
         s["qty"], s["per"] = 1, 0
     s["grams"] = 0 if bundle else guess_grams(name)
@@ -250,7 +251,7 @@ def hook_lines(s):
         if s["pct"] >= 70:
             first.append(f"토스 {short} {s['pct']}% 할인 실화임?")
         lines = [pick(first, s["link"]), ""]
-    weight = next((x.strip() for x in s["name"].split(",") if re.match(r"^\d+(?:\.\d+)?\s*(kg|g)$", x.strip(), re.I)), "")
+    weight = "" if s.get("bundle") else next((x.strip() for x in s["name"].split(",") if re.match(r"^\d+(?:\.\d+)?\s*(kg|g)$", x.strip(), re.I)), "")
     if s["qty"] > 1:
         lines.append(f"{short} {s['qty']}{s['unit']}에 {fmt(s['sale'])}원")
     else:
