@@ -317,7 +317,8 @@ def hook_lines(s):
     else:
         lines.append(f"{amount}{fmt(s['sale'])}원" + (f", {s['pct']}% 할인임" if s["pct"] else "임"))
     trust = [x for x in [s.get("rank", ""), f"리뷰 {s['reviews']:,}개 평점 {s['rating']:.1f}" if s.get("reviews") and s["reviews"] >= 100 and s.get("rating") else ""] if x]
-    lines.append(" · ".join(trust) if trust else pick(["특가라 금방 끝날 수도 있음", "필요하면 미리 쟁여두는 거 추천함"], s["link"]))
+    if trust:   # 순위·리뷰가 없으면 줄을 비운다 (급함은 단점 줄이 맡는다)
+        lines.append(" · ".join(trust))
     return lines
 
 
@@ -325,8 +326,41 @@ def item_line(s):
     return f"{s['name']} {fmt(s['sale'])}원\n{s['link']}"
 
 
+BANNED = ["강추", "꿀템", "삶의 질", "삶의질", "인생템", "완벽", "최고", "무조건", "합니다", "입니다", "습니다"]
+MAX_BODY = 300   # 길면 안 읽는다 (레퍼런스 프롬프트 규칙)
+
+
+def downside(s):
+    """단점 1개. 상품명에 있는 사실(무게·수량·크기·사이즈)에서만 만든다. 모르면 선착순 사실로."""
+    name, cat = s["name"], category(s["name"])[0]
+    liters = re.search(r"(\d+)\s*L\b", name)
+    if cat in ("고기", "반찬") and s.get("grams", 0) >= 1000:
+        return "양 많아서 혼자면 소분해서 얼려야 됨"
+    if cat == "음료" and s["qty"] >= 6:
+        return "한 번에 와서 둘 자리는 있어야 됨"
+    if cat == "계란" and s["qty"] >= 30:
+        return "양 많아서 빨리 먹을 집 아니면 좀 버거움"
+    if cat == "수납" and liters and int(liters.group(1)) >= 100:
+        return f"{liters.group(1)}L라 생각보다 큼, 둘 자리 먼저 재 봐야 됨"
+    if cat == "침구" and re.search(r"\bSS\b|\bS\b|슈퍼싱글|싱글", name):
+        return "SS 사이즈라 혼자 쓰는 용임" if "SS" in name or "슈퍼싱글" in name else "싱글 사이즈라 혼자 쓰는 용임"
+    if cat == "과일" and s.get("grams", 0) >= 3000:
+        return "양 많아서 빨리 먹어야 됨"
+    return "선착순 특가라 금방 끝날 수 있는 게 단점임"
+
+
+def lint(main):
+    """금지어·길이 검사. 문제가 있으면 초안 요약에 적는다."""
+    issues = [f"금지어 `{w}`" for w in BANNED if w in main]
+    if len(main) > MAX_BODY:
+        issues.append(f"본문 {len(main)}자 ({MAX_BODY}자 넘음)")
+    return issues
+
+
 def single_post(s):
-    main = "\n".join(["#광고"] + hook_lines(s))
+    lines = hook_lines(s)
+    lines += [downside(s), "", "링크는 댓글에 둠"]
+    main = "\n".join(["#광고"] + lines)
     reply = f"{s['disc']}\n\n{item_line(s)}"
     return main, reply
 
@@ -568,7 +602,8 @@ def process_batch(issue):
         new = gh("POST", f"/repos/{REPO}/issues", {"title": title, "body": draft_body(main, urls, reply, number)})
         names = ", ".join(p["short"] for p in group)
         shots = "캡처" if all(p["shots"] for p in group) else ("카드" if not any(p["shots"] for p in group) else "캡처+카드")
-        rows.append(f"| {when.month}/{when.day} {when:%H:%M} | {names} | {shots} | #{new['number']} |")
+        warn = ", ".join(lint(main))
+        rows.append(f"| {when.month}/{when.day} {when:%H:%M} | {names} | {shots} | #{new['number']}{' ⚠️ ' + warn if warn else ''} |")
         print("만듦:", title)
 
     gh("PATCH", f"/repos/{REPO}/issues/{number}", {"title": f"{DONE_PREFIX} {issue['title'][2:].strip()}".strip()})
