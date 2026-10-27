@@ -240,16 +240,16 @@ def pick(options, key):
 
 
 def hook_lines(s):
-    """본문 첫 한마디. 말투는 중간(B). 사실(가격·할인율·리뷰)만 쓰고 경험담은 지어내지 않는다."""
+    """본문 첫 한마디. 말투는 스레드체(음슴체: ~임, ~됨, ~함 + ;; ㄷㄷ). 사실(가격·할인율·리뷰)만 쓰고 경험담은 지어내지 않는다."""
     short = s["short"] or "이거"
     if s["hook"]:   # 직접 쓴 한마디는 첫 문구만 바꾸고 가격 줄은 그대로 둔다
         lines = [x.strip() for x in s["hook"].split("/") if x.strip()] + [""]
     else:
-        first = [f"오늘 토스 {short} 특가 실화임?", f"토스 {short} 이 가격 실화?", f"{short} 필요한 사람 지금 토스 보세요"]
+        first = [f"토스 {short} 가격 실화냐;;", f"오늘 토스 {short} 미쳤음ㄷㄷ", f"{short} 이 가격이면 그냥 쟁여야 됨"]
         if s.get("per100"):
-            first = [f"{short} 100g에 {s['per100'] // 100 * 100:,}원대?", f"{short} 100g에 {fmt(s['per100'])}원 실화?"]
+            first = [f"{short} 100g에 {s['per100'] // 100 * 100:,}원대 실화냐;;", f"{short} 100g에 {fmt(s['per100'])}원임ㄷㄷ"]
         if s["pct"] >= 70:
-            first.append(f"토스 {short} {s['pct']}% 할인 실화임?")
+            first.append(f"토스 {short} {s['pct']}% 할인 미쳤음;;")
         lines = [pick(first, s["link"]), ""]
     weight = "" if s.get("bundle") else next((x.strip() for x in s["name"].split(",") if re.match(r"^\d+(?:\.\d+)?\s*(kg|g)$", x.strip(), re.I)), "")
     if s["qty"] > 1:
@@ -257,15 +257,15 @@ def hook_lines(s):
     else:
         lines.append(f"{short} {weight + ' ' if weight else ''}{fmt(s['sale'])}원")
     if s.get("per100") and not s["per"]:
-        lines.append(f"100g에 {fmt(s['per100'])}원꼴" + (f", {s['pct']}% 할인" if s["pct"] else ""))
+        lines.append(f"100g에 {fmt(s['per100'])}원꼴" + (f", {s['pct']}% 할인임" if s["pct"] else "임"))
     elif s["per"]:
-        lines.append(f"{ONE.get(s['unit'], '한 개')}에 {fmt(s['per'])}원꼴" + (f", {s['pct']}% 할인" if s["pct"] else ""))
+        lines.append(f"{ONE.get(s['unit'], '한 개')}에 {fmt(s['per'])}원꼴" + (f", {s['pct']}% 할인임" if s["pct"] else "임"))
     elif s["pct"]:
-        lines.append(f"정가 {fmt(s['orig'])}원에서 {s['pct']}% 할인" if s["orig"] else f"{s['pct']}% 할인")
+        lines.append(f"정가 {fmt(s['orig'])}원에서 {s['pct']}% 할인임" if s["orig"] else f"{s['pct']}% 할인임")
     if s.get("reviews") and s["reviews"] >= 100 and s.get("rating"):
-        lines.append(f"리뷰 {s['reviews']:,}개에 평점 {s['rating']:.1f}")
+        lines.append(f"리뷰 {s['reviews']:,}개에 평점 {s['rating']:.1f}임")
     else:
-        lines.append(pick(["특가는 금방 끝날 수도 있어요", "필요하면 미리 쟁여 두세요"], s["link"]))
+        lines.append(pick(["특가라 금방 끝날 수도 있음", "필요하면 미리 쟁여두는 거 추천함"], s["link"]))
     return lines
 
 
@@ -283,13 +283,13 @@ def roundup_post(products):
     n = len(products)
     best = max((p["pct"] for p in products), default=0)
     custom = next((p["hook"] for p in products if p["hook"]), "")   # 모음 글은 처음 나온 한마디를 머리말로
-    head = [x.strip() for x in custom.split("/") if x.strip()] if custom else [f"오늘 토스 핫딜 BEST {n}"]
+    head = [x.strip() for x in custom.split("/") if x.strip()] if custom else [f"오늘 토스 핫딜 BEST {n} 모아봄"]
     lines = ["#광고"] + head + [""]
     if best:
-        lines.append(f"최대 {best}% 할인까지 모아 봤어요")
+        lines.append(f"최대 {best}% 할인까지 있음ㄷㄷ")
     for p in products:
         lines.append(f"· {p['short']} {fmt(p['sale'])}원" + (f" ({p['pct']}%↓)" if p["pct"] else ""))
-    lines += ["", "링크는 댓글에 👇"]
+    lines += ["", "링크는 댓글에 둠 👇"]
     reply = products[0]["disc"] + "\n\n" + "\n\n".join(item_line(p) for p in products)
     return "\n".join(lines), reply
 
