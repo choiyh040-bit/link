@@ -45,13 +45,26 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FONTS = os.path.join(ROOT, "assets", "fonts")
 
 DISCLOSURE = "✱ 이 포스팅은 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
+# 쿠팡 파트너스 (2026-10-28 사용자 결정: 토스 수수료 변경으로 쿠팡을 일찍 시작, 같은 계정에 추가). 쿠팡이 정한 문구 그대로.
+COUPANG_DISCLOSURE = "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
 SLOTS = ["08:30", "12:30", "20:30"]       # 하루 게시 시간대 (한국 시간)
 MIN_LEAD = dt.timedelta(minutes=30)       # 지금부터 최소 이만큼 뒤 시간대부터
 BATCH_MARK = "<!-- batch:{} -->"
 DONE_PREFIX = "상품(처리됨)"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
-URL_RE = re.compile(r"https?://(?:toss\.shopping|sharelink\.toss\.im|[\w.-]*toss\.im)/[A-Za-z0-9_\-./?=&%#]+")   # 토스 링크만 (다른 주소는 무시)
+URL_RE = re.compile(r"https?://(?:toss\.shopping|sharelink\.toss\.im|[\w.-]*toss\.im|link\.coupang\.com|coupa\.ng|(?:www\.|m\.)?coupang\.com)/[A-Za-z0-9_\-./?=&%#]+")   # 토스·쿠팡 링크만 (다른 주소는 무시)
+
+
+def is_coupang(link):
+    return bool(re.search(r"coupang\.com|coupa\.ng", link))
+
+
+def disclosure_for(link, pasted):
+    """붙여 준 광고 문구가 링크의 쇼핑몰과 맞으면 그대로, 아니면 그 쇼핑몰의 표준 문구."""
+    if is_coupang(link):
+        return pasted if "쿠팡" in pasted else COUPANG_DISCLOSURE
+    return pasted if "토스" in pasted else DISCLOSURE
 HOOK_RE = re.compile(r"^한마디\s*[:：]\s*(.+)$")
 PRICE_RE = re.compile(r"^\s*(\d[\d,]*)\s*원?\s*(?:/\s*(\d[\d,]*)\s*(원|%)?)?\s*$")   # 할인가 / 정가 또는 할인율%
 
@@ -82,7 +95,7 @@ def parse_batch(body):
         url = URL_RE.search(line)
         price = PRICE_RE.match(line)
         if url:
-            last = {"name": pending["name"], "disc": pending["disc"] or DISCLOSURE,
+            last = {"name": pending["name"], "disc": disclosure_for(url.group(0), pending["disc"]),
                     "link": url.group(0), "sale": None, "orig": None, "pct": None,
                     "hook": pending["hook"], "shots": pending["shots"]}
             if pending["price"]:
@@ -130,7 +143,7 @@ def fetch_meta(link):
             re.search(r'<meta[^>]+content="([^"]*)"[^>]+property="%s"' % prop, page)
         return html.unescape(m.group(1)) if m else ""
 
-    meta["title"] = re.sub(r"\s*\|\s*토스쇼핑\s*$", "", og("og:title"))
+    meta["title"] = re.sub(r"\s*[|:-]\s*(토스쇼핑|쿠팡!?)\s*$", "", og("og:title"))
     meta["image"] = og("og:image")
     desc = og("og:description")
     rank = re.search(r",\s*([^,.]{1,20}?\d+위)", desc)
@@ -353,6 +366,8 @@ def downside(s):
         return "SS 사이즈라 혼자 쓰는 용임" if "SS" in name or "슈퍼싱글" in name else "싱글 사이즈라 혼자 쓰는 용임"
     if cat == "과일" and s.get("grams", 0) >= 3000:
         return "양 많아서 빨리 먹어야 됨"
+    if is_coupang(s["link"]):
+        return "쿠팡 가격은 자주 바뀌어서 들어가서 다시 봐야 됨"
     return "선착순 특가라 금방 끝날 수 있는 게 단점임"
 
 
@@ -376,14 +391,15 @@ def roundup_post(products):
     n = len(products)
     best = max((p["pct"] for p in products), default=0)
     custom = next((p["hook"] for p in products if p["hook"]), "")   # 모음 글은 처음 나온 한마디를 머리말로
-    head = [no_emoji(x) for x in custom.split("/") if no_emoji(x)] if custom else [f"오늘 토스 핫딜 BEST {n} 모아봄"]
+    head = [no_emoji(x) for x in custom.split("/") if no_emoji(x)] if custom else [f"오늘 {'' if any(is_coupang(p['link']) for p in products) else '토스 '}핫딜 BEST {n} 모아봄"]
     lines = head + [""]
     if best:
         lines.append(f"최대 {best}% 할인까지 있음ㄷㄷ")
     for p in products:
         lines.append(f"· {p['short']} {fmt(p['sale'])}원" + (f" ({p['pct']}%↓)" if p["pct"] else ""))
     lines += ["", "링크는 댓글에 둠", tag_line(products)]
-    reply = products[0]["disc"] + "\n\n" + "\n\n".join(item_line(p) for p in products)
+    discs = list(dict.fromkeys(p["disc"] for p in products))   # 토스·쿠팡이 섞이면 두 문구 모두
+    reply = "\n".join(discs) + "\n\n" + "\n\n".join(item_line(p) for p in products)
     return "\n".join(lines), reply
 
 
@@ -535,31 +551,31 @@ def save_card(png, path):
     return f"https://raw.githubusercontent.com/{REPO}/{res['commit']['sha']}/{path}"
 
 
-def trim_screenshot(data):
+def trim_screenshot(data, toss=True):
     """토스 앱 상품 화면 캡처(세로로 긴 폰 화면)에서 위쪽 버튼 줄과 아래쪽 적립·뽑기·구매 버튼 영역을 잘라 낸다."""
     try:
         im = Image.open(io.BytesIO(data)).convert("RGB")
     except Exception:
         raise PostError("캡처 이미지를 열 수 없어요. PNG나 JPG로 다시 붙여 주세요.")
     w, h = im.size
-    if h / w >= 1.8:   # 폰 전체 화면 캡처일 때만 (이미 잘린 이미지는 그대로)
+    if toss and h / w >= 1.8:   # 토스 앱 폰 전체 화면 캡처일 때만 (쿠팡·이미 잘린 이미지는 그대로)
         im = im.crop((0, round(h * 0.06), w, round(h * 0.805)))
     out = io.BytesIO()
     im.save(out, "JPEG", quality=92)
     return out.getvalue()
 
 
-def save_shot(url, path_base):
+def save_shot(url, path_base, toss=True):
     data, ctype = download(url)
     if not any(t in ctype for t in ("png", "jpeg", "jpg")):
         raise PostError(f"캡처는 PNG나 JPG만 쓸 수 있어요 (받은 형식: {ctype or '알 수 없음'}).")
-    return save_card(trim_screenshot(data), f"{path_base}.jpg")
+    return save_card(trim_screenshot(data, toss), f"{path_base}.jpg")
 
 
 def images_for(s, number, idx, now):
     """상품 이미지: 붙여 준 캡처가 있으면 캡처, 없으면 디자인 카드."""
     if s["shots"]:
-        return [save_shot(u, f"images/shots/{now:%Y%m%d}-b{number}-{idx}-{j}") for j, u in enumerate(s["shots"], 1)]
+        return [save_shot(u, f"images/shots/{now:%Y%m%d}-b{number}-{idx}-{j}", not is_coupang(s["link"])) for j, u in enumerate(s["shots"], 1)]
     card = render_card(s, load_photo(s["image"]))
     return [save_card(card, f"images/cards/{now:%Y%m%d}-b{number}-{idx}.png")]
 
@@ -577,7 +593,7 @@ def process_batch(issue):
     number = issue["number"]
     items = parse_batch(issue.get("body"))
     if not items:
-        comment(number, "❌ 공유 문구에서 링크(https://…)를 찾지 못했어요. 토스 쉐어링크 공유 문구를 그대로 붙여 주세요.")
+        comment(number, "❌ 공유 문구에서 링크(https://…)를 찾지 못했어요. 토스 쉐어링크 공유 문구나 쿠팡 파트너스 링크를 붙여 주세요.")
         return
     missing = [it["name"] or it["link"] for it in items if not it["sale"]]
     if missing:
