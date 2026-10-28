@@ -133,7 +133,13 @@ def wait_ready(container_id):
 
 
 def publish(user_id, fields):
-    cid = th("POST", f"/{user_id}/threads", fields)["id"]
+    try:
+        cid = th("POST", f"/{user_id}/threads", fields)["id"]
+    except PostError:
+        if "topic_tag" not in fields:
+            raise
+        # 주제 태그를 거절하면 태그 없이 다시 올린다 (글 속 ＃태그는 그대로 보임)
+        cid = th("POST", f"/{user_id}/threads", {k: v for k, v in fields.items() if k != "topic_tag"})["id"]
     wait_ready(cid)
     return th("POST", f"/{user_id}/threads_publish", {"creation_id": cid})["id"]
 
@@ -201,6 +207,17 @@ def split_reply(reply):
     return chunks
 
 
+TAG_RE = re.compile(r"#([^\s#.&@,!?]{1,50})")
+
+
+def tag_text(text):
+    """스레드는 글 속 첫 해시태그 하나만 주제 태그로 바꾸고 '#'을 지운다 ('#광고'가 '광고'만 남음, 2026-10-28).
+    그래서 글 속 '#'은 전각 '＃'으로 바꿔 그대로 보이게 하고, 광고가 아닌 첫 태그를 topic_tag로 따로 단다."""
+    tags = [t for t in TAG_RE.findall(text) if not t.isdigit()]
+    topic = next((t for t in tags if t != "광고"), "")
+    return TAG_RE.sub(lambda m: "＃" + m.group(1), text), topic
+
+
 def handle(issue, user_id):
     number = issue["number"]
     text, images, reply = parse_body(issue.get("body"))
@@ -208,6 +225,8 @@ def handle(issue, user_id):
         raise PostError("본문에 게시할 글이 없어요.")
     if len(text) > MAX_CHARS:
         raise PostError(f"글이 {len(text)}자예요. 스레드는 {MAX_CHARS}자까지라 줄여 주세요.")
+    text, topic = tag_text(text)
+    extra = {"topic_tag": topic} if topic else {}
     urls = [public_url(number, u, i) for i, u in enumerate(images[:MAX_CAROUSEL], 1)]
     if len(urls) >= 2:   # 여러 장이면 넘겨 보기(캐러셀)
         children = []
@@ -215,11 +234,11 @@ def handle(issue, user_id):
             cid = th("POST", f"/{user_id}/threads", {"media_type": "IMAGE", "image_url": u, "is_carousel_item": "true"})["id"]
             wait_ready(cid)
             children.append(cid)
-        media_id = publish(user_id, {"media_type": "CAROUSEL", "children": ",".join(children), "text": text})
+        media_id = publish(user_id, {"media_type": "CAROUSEL", "children": ",".join(children), "text": text, **extra})
     elif urls:
-        media_id = publish(user_id, {"media_type": "IMAGE", "image_url": urls[0], "text": text})
+        media_id = publish(user_id, {"media_type": "IMAGE", "image_url": urls[0], "text": text, **extra})
     else:
-        media_id = publish(user_id, {"media_type": "TEXT", "text": text})
+        media_id = publish(user_id, {"media_type": "TEXT", "text": text, **extra})
     link = th("GET", f"/{media_id}", {"fields": "permalink"}).get("permalink", "")
     note = ""
     if reply:

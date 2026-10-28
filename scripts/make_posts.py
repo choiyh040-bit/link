@@ -284,6 +284,23 @@ def category(name):
     return DEFAULT_CAT
 
 
+# 상품 해시태그 (2026-10-28 사용자 요청: #광고만 있으면 아까우니 상품 태그도 같이). 맨 끝 줄에 '#광고 #상품 #종류 #핫딜'.
+TAGS = {"고기": ["고기", "집밥"], "음료": ["음료"], "계란": ["계란"], "반찬": ["반찬", "자취요리"], "과일": ["과일"],
+        "수납": ["수납정리"], "침구": ["침구"], "생필품": ["생필품"]}
+
+
+def tag_line(products):
+    tags = ["광고"]
+    for p in products:
+        tags += [re.sub(r"[^\w]", "", p["short"] or "")] + TAGS.get(category(p["name"])[0], [])
+    tags.append("핫딜")
+    seen = []
+    for t in tags:
+        if t and t not in seen:
+            seen.append(t)
+    return " ".join("#" + t for t in seen[:5])
+
+
 def hook_lines(s):
     """본문. 스레드체(음슴체: ~임, ~됨, ~함 + ;; ㄷㄷ), 이모지 없음, 사실만 쓴다.
     1줄: 상황(상품 이름 없음) 또는 사용자 한마디 / 2줄: 이름 + 단가 충격 / 빈 줄 / 쓰는 때 / 가격·할인 / 리뷰·순위"""
@@ -360,7 +377,7 @@ def lint(main):
 def single_post(s):
     lines = hook_lines(s)
     lines += [downside(s), "", "링크는 댓글에 둠"]
-    main = "\n".join(lines + ["#광고"])   # 광고 표시는 본문 맨 끝 해시태그 (2026-10-28 사용자 결정)
+    main = "\n".join(lines + [tag_line([s])])   # 광고 표시는 본문 맨 끝 해시태그 (2026-10-28 사용자 결정)
     reply = f"{s['disc']}\n\n{item_line(s)}"
     return main, reply
 
@@ -375,7 +392,7 @@ def roundup_post(products):
         lines.append(f"최대 {best}% 할인까지 있음ㄷㄷ")
     for p in products:
         lines.append(f"· {p['short']} {fmt(p['sale'])}원" + (f" ({p['pct']}%↓)" if p["pct"] else ""))
-    lines += ["", "링크는 댓글에 둠", "#광고"]
+    lines += ["", "링크는 댓글에 둠", tag_line(products)]
     reply = products[0]["disc"] + "\n\n" + "\n\n".join(item_line(p) for p in products)
     return "\n".join(lines), reply
 
