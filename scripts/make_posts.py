@@ -284,21 +284,11 @@ def category(name):
     return DEFAULT_CAT
 
 
-# 상품 해시태그 (2026-10-28 사용자 요청: #광고만 있으면 아까우니 상품 태그도 같이). 맨 끝 줄에 '#광고 #상품 #종류 #핫딜'.
-TAGS = {"고기": ["고기", "집밥"], "음료": ["음료"], "계란": ["계란"], "반찬": ["반찬", "자취요리"], "과일": ["과일"],
-        "수납": ["수납정리"], "침구": ["침구"], "생필품": ["생필품"]}
-
-
+# 해시태그: 맨 끝 줄 '#광고 #상품'. 스레드는 태그가 글 하나에 1개만 작동해서, 상품 태그는 게시할 때
+# 글에서 빠지고 주제 태그(topic_tag)로 달린다. 보이는 건 '＃광고' 한 줄 (2026-10-28 사용자 결정).
 def tag_line(products):
-    tags = ["광고"]
-    for p in products:
-        tags += [re.sub(r"[^\w]", "", p["short"] or "")] + TAGS.get(category(p["name"])[0], [])
-    tags.append("핫딜")
-    seen = []
-    for t in tags:
-        if t and t not in seen:
-            seen.append(t)
-    return " ".join("#" + t for t in seen[:5])
+    topic = re.sub(r"[^\w]", "", products[0]["short"] or "") if products else ""
+    return "#광고" + (f" #{topic}" if topic else "")
 
 
 def hook_lines(s):

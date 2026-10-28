@@ -212,10 +212,12 @@ TAG_RE = re.compile(r"#([^\s#.&@,!?]{1,50})")
 
 def tag_text(text):
     """스레드는 글 속 첫 해시태그 하나만 주제 태그로 바꾸고 '#'을 지운다 ('#광고'가 '광고'만 남음, 2026-10-28).
-    그래서 글 속 '#'은 전각 '＃'으로 바꿔 그대로 보이게 하고, 광고가 아닌 첫 태그를 topic_tag로 따로 단다."""
+    그래서 '#광고'는 전각 '＃광고'로 바꿔 글자로 보이게 하고, 광고가 아닌 첫 태그는 글에서 빼서 topic_tag로 단다.
+    작동하지 않는 태그를 늘어놓지 않는다 (2026-10-28 사용자 결정)."""
     tags = [t for t in TAG_RE.findall(text) if not t.isdigit()]
     topic = next((t for t in tags if t != "광고"), "")
-    return TAG_RE.sub(lambda m: "＃" + m.group(1), text), topic
+    text = TAG_RE.sub(lambda m: "＃광고" if m.group(1) == "광고" else ("" if not m.group(1).isdigit() else m.group(0)), text)
+    return re.sub(r"[ \t]+$", "", text, flags=re.M), topic
 
 
 def handle(issue, user_id):
