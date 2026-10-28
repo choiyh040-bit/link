@@ -360,7 +360,7 @@ def lint(main):
 def single_post(s):
     lines = hook_lines(s)
     lines += [downside(s), "", "링크는 댓글에 둠"]
-    main = "\n".join(["#광고"] + lines)
+    main = "\n".join(lines + ["#광고"])   # 광고 표시는 본문 맨 끝 해시태그 (2026-10-28 사용자 결정)
     reply = f"{s['disc']}\n\n{item_line(s)}"
     return main, reply
 
@@ -370,12 +370,12 @@ def roundup_post(products):
     best = max((p["pct"] for p in products), default=0)
     custom = next((p["hook"] for p in products if p["hook"]), "")   # 모음 글은 처음 나온 한마디를 머리말로
     head = [no_emoji(x) for x in custom.split("/") if no_emoji(x)] if custom else [f"오늘 토스 핫딜 BEST {n} 모아봄"]
-    lines = ["#광고"] + head + [""]
+    lines = head + [""]
     if best:
         lines.append(f"최대 {best}% 할인까지 있음ㄷㄷ")
     for p in products:
         lines.append(f"· {p['short']} {fmt(p['sale'])}원" + (f" ({p['pct']}%↓)" if p["pct"] else ""))
-    lines += ["", "링크는 댓글에 둠"]
+    lines += ["", "링크는 댓글에 둠", "#광고"]
     reply = products[0]["disc"] + "\n\n" + "\n\n".join(item_line(p) for p in products)
     return "\n".join(lines), reply
 
