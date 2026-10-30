@@ -47,21 +47,29 @@ FONTS = os.path.join(ROOT, "assets", "fonts")
 DISCLOSURE = "✱ 이 포스팅은 토스쇼핑 쉐어링크 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
 # 쿠팡 파트너스 (2026-10-28 사용자 결정: 토스 수수료 변경으로 쿠팡을 일찍 시작, 같은 계정에 추가). 쿠팡이 정한 문구 그대로.
 COUPANG_DISCLOSURE = "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
+# 오늘의집 큐레이터 (2026-10-30 사용자 결정, 같은 계정). 공식 문구 확인 전 임시 문구.
+OHOUSE_DISCLOSURE = "이 포스팅은 오늘의집 큐레이터 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
 SLOTS = ["06:30", "08:30", "20:30", "22:30"]   # 피크타임: 아침 6~9시 2개, 저녁 2개 (2026-10-30 사용자 결정)
 MIN_LEAD = dt.timedelta(minutes=30)       # 지금부터 최소 이만큼 뒤 시간대부터
 BATCH_MARK = "<!-- batch:{} -->"
 DONE_PREFIX = "상품(처리됨)"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
-URL_RE = re.compile(r"https?://(?:toss\.shopping|sharelink\.toss\.im|[\w.-]*toss\.im|link\.coupang\.com|coupa\.ng|(?:www\.|m\.)?coupang\.com)/[A-Za-z0-9_\-./?=&%#]+")   # 토스·쿠팡 링크만 (다른 주소는 무시)
+URL_RE = re.compile(r"https?://(?:toss\.shopping|sharelink\.toss\.im|[\w.-]*toss\.im|link\.coupang\.com|coupa\.ng|(?:www\.|m\.)?coupang\.com|(?:[\w-]+\.)?ohou\.se|(?:www\.|m\.)?ohouse\.com)/[A-Za-z0-9_\-./?=&%#]+")   # 토스·쿠팡 링크만 (다른 주소는 무시)
 
 
 def is_coupang(link):
     return bool(re.search(r"coupang\.com|coupa\.ng", link))
 
 
+def is_ohouse(link):
+    return bool(re.search(r"ohou\.se|ohouse\.com", link))
+
+
 def disclosure_for(link, pasted):
     """붙여 준 광고 문구가 링크의 쇼핑몰과 맞으면 그대로, 아니면 그 쇼핑몰의 표준 문구."""
+    if is_ohouse(link):
+        return pasted if "오늘의집" in pasted else OHOUSE_DISCLOSURE
     if is_coupang(link):
         return pasted if "쿠팡" in pasted else COUPANG_DISCLOSURE
     return pasted if "토스" in pasted else DISCLOSURE
@@ -391,7 +399,7 @@ def roundup_post(products):
     n = len(products)
     best = max((p["pct"] for p in products), default=0)
     custom = next((p["hook"] for p in products if p["hook"]), "")   # 모음 글은 처음 나온 한마디를 머리말로
-    head = [no_emoji(x) for x in custom.split("/") if no_emoji(x)] if custom else [f"오늘 {'' if any(is_coupang(p['link']) for p in products) else '토스 '}핫딜 BEST {n} 모아봄"]
+    head = [no_emoji(x) for x in custom.split("/") if no_emoji(x)] if custom else [f"오늘 {'' if any(is_coupang(p['link']) or is_ohouse(p['link']) for p in products) else '토스 '}핫딜 BEST {n} 모아봄"]
     lines = head + [""]
     if best:
         lines.append(f"최대 {best}% 할인까지 있음ㄷㄷ")
@@ -575,7 +583,7 @@ def save_shot(url, path_base, toss=True):
 def images_for(s, number, idx, now):
     """상품 이미지: 붙여 준 캡처가 있으면 캡처, 없으면 디자인 카드."""
     if s["shots"]:
-        return [save_shot(u, f"images/shots/{now:%Y%m%d}-b{number}-{idx}-{j}", not is_coupang(s["link"])) for j, u in enumerate(s["shots"], 1)]
+        return [save_shot(u, f"images/shots/{now:%Y%m%d}-b{number}-{idx}-{j}", not (is_coupang(s["link"]) or is_ohouse(s["link"]))) for j, u in enumerate(s["shots"], 1)]
     card = render_card(s, load_photo(s["image"]))
     return [save_card(card, f"images/cards/{now:%Y%m%d}-b{number}-{idx}.png")]
 
