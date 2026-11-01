@@ -17,8 +17,16 @@ function cat(cx, cy, s, eyes, opts = {}) {
   // 가슴 흰 털(턱시도)
   g.push(`<path d="M-70 20 Q0 120 70 20 Q75 150 0 205 Q-75 150 -70 20Z" fill="${WHITE}"/>`);
   // 앞발
-  g.push(`<ellipse cx="-55" cy="222" rx="42" ry="26" fill="${WHITE}"/><ellipse cx="55" cy="222" rx="42" ry="26" fill="${WHITE}"/>`);
-  g.push(`<path d="M-62 212v18M-48 212v18M48 212v18M62 212v18" stroke="#d9d9de" stroke-width="3"/>`);
+  if (opts.rightPawUp) {
+    // 오른쪽 앞발은 들어 올렸으니 바닥엔 왼발만
+    g.push(`<ellipse cx="-55" cy="222" rx="42" ry="26" fill="${WHITE}"/>`);
+    g.push(`<path d="M-62 212v18M-48 212v18" stroke="#d9d9de" stroke-width="3"/>`);
+    g.push(`<path d="M95 70 Q170 -20 230 -140" stroke="${INK}" stroke-width="44" stroke-linecap="round" fill="none"/>`);
+    g.push(`<ellipse cx="236" cy="-152" rx="36" ry="28" fill="${WHITE}" transform="rotate(-50 236 -152)"/>`);
+  } else {
+    g.push(`<ellipse cx="-55" cy="222" rx="42" ry="26" fill="${WHITE}"/><ellipse cx="55" cy="222" rx="42" ry="26" fill="${WHITE}"/>`);
+    g.push(`<path d="M-62 212v18M-48 212v18M48 212v18M62 212v18" stroke="#d9d9de" stroke-width="3"/>`);
+  }
   // 귀
   g.push(`<path d="M-125 -95 L-110 -230 L-25 -150Z" fill="${INK}"/><path d="M125 -95 L110 -230 L25 -150Z" fill="${INK}"/>`);
   g.push(`<path d="M-108 -118 L-102 -195 L-50 -148Z" fill="${PINK}"/><path d="M108 -118 L102 -195 L50 -148Z" fill="${PINK}"/>`);
@@ -115,15 +123,15 @@ const p2 = panel('2', '#e8f4f6',
 
 const p3 = panel('3', '#fff0f3',
   tag(250, 730, -14, '콩이') + tag(540, 700, 2, '먹물') + tag(830, 730, 12, '양말') +
-  cat(520, 500, 1.15, 'side') +
-  // 휘두르는 앞발 + 날아가는 까망이
-  `<ellipse cx="770" cy="330" rx="48" ry="34" fill="#fff" transform="rotate(-30 770 330)"/>
-   <path d="M690 420 Q760 360 800 300" stroke="${INK}" stroke-width="40" stroke-linecap="round" fill="none"/>
-   <ellipse cx="800" cy="300" rx="38" ry="28" fill="#fff" transform="rotate(-35 800 300)"/>
-   <path d="M820 230 q50 -40 90 -30 M840 270 q60 -20 100 0 M830 310 q50 0 90 25" stroke="#ff6a13" stroke-width="8" fill="none" stroke-linecap="round"/>` +
-  tag(960, 140, 38, '까망이') +
-  `<text x="640" y="200" font-family="SUIT" font-weight="900" font-size="80" fill="#ff6a13" transform="rotate(-10 640 200)">퍽!</text>`,
-  '까망이는 탈락. 이름은 너네가 지어줘');
+  cat(500, 520, 1.1, 'side', { rightPawUp: true }) +
+  `<path d="M800 300 q50 -40 90 -30 M815 340 q60 -20 100 0 M805 380 q50 0 90 25" stroke="#ff6a13" stroke-width="8" fill="none" stroke-linecap="round"/>` +
+  tag(950, 170, 38, '까망이') +
+  `<text x="830" y="470" font-family="SUIT" font-weight="900" font-size="72" fill="#ff6a13" transform="rotate(-10 830 470)">퍽!</text>` +
+  `<g><rect x="70" y="90" width="560" height="120" rx="60" fill="#fff" stroke="${INK}" stroke-width="7"/>
+   <path d="M430 206 l40 56 l20 -58" fill="#fff" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/>
+   <rect x="425" y="196" width="72" height="16" fill="#fff"/>
+   <text x="350" y="168" font-family="SUIT" font-weight="900" font-size="46" fill="${INK}" text-anchor="middle">까망이는 성의가 없잖아</text></g>`,
+  '이름은 너네가 지어줘');
 
 (async () => {
   const browser = await chromium.launch();
