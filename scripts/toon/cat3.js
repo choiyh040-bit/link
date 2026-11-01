@@ -25,8 +25,6 @@ function cat(cx, cy, s, eyes, opts = {}) {
   if (opts.earsDown) { /* 기본 귀 그대로 */ }
   // 머리 (넓적하고 둥근 얼굴)
   g.push(`<ellipse cx="0" cy="-55" rx="178" ry="145" fill="${INK}"/>`);
-  // 이마 무늬
-  g.push(`<path d="M-55 -165 Q0 -180 55 -165 M-40 -140 Q0 -150 40 -140" stroke="#3a3a40" stroke-width="9" fill="none" stroke-linecap="round"/>`);
   // 턱시도: 코 아래 흰 주둥이 + 턱
   g.push(`<ellipse cx="0" cy="12" rx="78" ry="52" fill="${WHITE}"/>`);
   // 볼 (크고 부드럽게)
@@ -35,6 +33,13 @@ function cat(cx, cy, s, eyes, opts = {}) {
   if (eyes === 'sleep') {
     g.push(`<path d="M-92 -62 Q-62 -40 -32 -62" stroke="${WHITE}" stroke-width="9" fill="none" stroke-linecap="round"/>`);
     g.push(`<path d="M32 -62 Q62 -40 92 -62" stroke="${WHITE}" stroke-width="9" fill="none" stroke-linecap="round"/>`);
+  } else if (eyes === 'side') {
+    for (const x of [-62, 62]) {
+      g.push(`<ellipse cx="${x}" cy="-58" rx="33" ry="30" fill="#74c493"/>`);
+      g.push(`<ellipse cx="${x + 14}" cy="-56" rx="11" ry="22" fill="#1f2430"/>`);
+      g.push(`<path d="M${x - 36} -66 Q${x} -78 ${x + 36} -66 L${x + 36} -92 L${x - 36} -92Z" fill="${INK}"/>`);
+      g.push(`<circle cx="${x + 20}" cy="-62" r="5" fill="${WHITE}"/>`);
+    }
   } else {
     const big = eyes === 'sparkle';
     for (const x of [-62, 62]) {
