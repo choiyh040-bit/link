@@ -85,8 +85,6 @@ function panel(n, bg, body, caption) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
   <style>${css}</style>
   <rect width="1080" height="1080" fill="${bg}"/>
-  <rect x="24" y="24" width="1032" height="1032" rx="40" fill="none" stroke="${INK}" stroke-width="10"/>
-  <text x="70" y="120" font-family="SUIT" font-weight="900" font-size="54" fill="${INK}">${n}</text>
   ${body}
   <rect x="60" y="900" width="960" height="120" rx="30" fill="${INK}"/>
   <text x="540" y="980" font-family="SUIT" font-weight="800" font-size="56" fill="#ffd83d" text-anchor="middle">${caption}</text>
@@ -103,23 +101,29 @@ function tag(x, y, r, name) {
 }
 
 const p1 = panel('1', '#fdf3e7',
-  cat(380, 540, 1.2, 'wide') +
-  tag(800, 290, -10, '콩이') + tag(830, 470, 4, '먹물') + tag(790, 650, -6, '양말') +
-  `<text x="640" y="170" font-family="SUIT" font-weight="900" font-size="66" fill="#ff6a13">골라봐!</text>`,
-  '이름 후보 3개 준비함');
+  cat(360, 540, 1.15, 'wide') +
+  tag(760, 250, -10, '콩이') + tag(900, 400, 6, '먹물') + tag(740, 560, -4, '양말') + tag(890, 710, 8, '까망이') +
+  `<text x="600" y="150" font-family="SUIT" font-weight="900" font-size="66" fill="#ff6a13">골라봐!</text>`,
+  '이름 후보 4개 준비함');
 
 const p2 = panel('2', '#e8f4f6',
-  tag(200, 760, -18, '콩이') + tag(880, 760, 14, '양말') + tag(560, 230, 6, '먹물') +
+  tag(190, 770, -18, '콩이') + tag(890, 770, 14, '양말') + tag(560, 210, 6, '먹물') + tag(170, 260, -8, '까망이') +
   cat(560, 560, 1.15, 'side') +
-  `<text x="760" y="420" font-family="SUIT" font-weight="900" font-size="62" fill="#ff6a13">흥</text>
-   <text x="180" y="420" font-family="SUIT" font-weight="900" font-size="54" fill="#6d98a2">킁킁</text>`,
+  `<text x="770" y="420" font-family="SUIT" font-weight="900" font-size="62" fill="#ff6a13">흥</text>
+   <text x="190" y="520" font-family="SUIT" font-weight="900" font-size="54" fill="#6d98a2">킁킁</text>`,
   '킁킁... 다 별로래');
 
 const p3 = panel('3', '#fff0f3',
   tag(250, 730, -14, '콩이') + tag(540, 700, 2, '먹물') + tag(830, 730, 12, '양말') +
-  cat(540, 500, 1.2, 'sleep') +
-  `<text x="760" y="240" font-family="SUIT" font-weight="900" font-size="64" fill="#9aa0a6">Zzz</text>`,
-  '이름은 너네가 지어줘');
+  cat(520, 500, 1.15, 'side') +
+  // 휘두르는 앞발 + 날아가는 까망이
+  `<ellipse cx="770" cy="330" rx="48" ry="34" fill="#fff" transform="rotate(-30 770 330)"/>
+   <path d="M690 420 Q760 360 800 300" stroke="${INK}" stroke-width="40" stroke-linecap="round" fill="none"/>
+   <ellipse cx="800" cy="300" rx="38" ry="28" fill="#fff" transform="rotate(-35 800 300)"/>
+   <path d="M820 230 q50 -40 90 -30 M840 270 q60 -20 100 0 M830 310 q50 0 90 25" stroke="#ff6a13" stroke-width="8" fill="none" stroke-linecap="round"/>` +
+  tag(960, 140, 38, '까망이') +
+  `<text x="640" y="200" font-family="SUIT" font-weight="900" font-size="80" fill="#ff6a13" transform="rotate(-10 640 200)">퍽!</text>`,
+  '까망이는 탈락. 이름은 너네가 지어줘');
 
 (async () => {
   const browser = await chromium.launch();
