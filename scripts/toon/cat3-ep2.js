@@ -122,7 +122,7 @@ const p2 = panel('2', '#e8f4f6',
   '킁킁... 다 별로래');
 
 const p3 = panel('3', '#fff0f3',
-  tag(250, 730, -14, '콩이') + tag(540, 700, 2, '먹물') + tag(830, 730, 12, '양말') +
+  tag(320, 740, -16, '콩이') + tag(505, 805, 3, '먹물') + tag(680, 745, 14, '양말') +
   cat(500, 520, 1.1, 'side', { rightPawUp: true }) +
   `<path d="M800 300 q50 -40 90 -30 M815 340 q60 -20 100 0 M805 380 q50 0 90 25" stroke="#ff6a13" stroke-width="8" fill="none" stroke-linecap="round"/>` +
   tag(950, 170, 38, '까망이') +
