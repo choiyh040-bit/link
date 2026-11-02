@@ -6,6 +6,7 @@
   예약 지금 계란          → 다음 실행 때 바로 게시
   초안 ...                → 게시하지 않음 (제목을 '예약'으로 바꾸면 승인)
   점검                    → 토큰만 확인하고 결과를 댓글로 남김
+  댓글 확인               → 최근 내 글 10개에 달린 댓글(숨김 포함)을 모아 이슈 댓글로 남김
 
 이슈 본문
   게시할 글. 붙여 넣은 이미지(첫 번째 1장)는 이미지로 올라가고 본문 글에서는 빠진다.
@@ -268,6 +269,29 @@ def last_post_time(user_id):
     return dt.datetime.strptime(data[0]["timestamp"], "%Y-%m-%dT%H:%M:%S%z").astimezone(KST)
 
 
+def reply_report(me):
+    """최근 글 10개의 다른 사람 댓글을 모은다. 숨김·삭제 여부도 표시 (2026-11-02 사용자: 댓글 수는 있는데 안 보임)."""
+    posts = th("GET", f"/{me['id']}/threads", {"fields": "id,text,timestamp,permalink", "limit": 10}).get("data", [])
+    lines = []
+    for p in posts:
+        first = (p.get("text") or "(이미지만)").strip().split("\n")[0][:40]
+        try:
+            conv = th("GET", f"/{p['id']}/conversation",
+                      {"fields": "id,text,username,timestamp,hide_status", "reverse": "false"}).get("data", [])
+        except PostError as e:
+            lines.append(f"- {first} → 댓글을 못 읽었어요: {str(e)[:120]}")
+            continue
+        others = [c for c in conv if c.get("username") != me.get("username")]
+        lines.append(f"\n**{first}** ({p.get('timestamp', '')[:16]}) {p.get('permalink', '')}")
+        if not others:
+            lines.append("- 다른 사람 댓글 없음")
+        for c in others:
+            hidden = c.get("hide_status") not in (None, "NOT_HUSHED", "UNHUSHED")
+            mark = f" [{c.get('hide_status')}]" if hidden else ""
+            lines.append(f"- @{c.get('username')}{mark}: {(c.get('text') or '').strip()[:200]}")
+    return "\n".join(lines) or "최근 글이 없어요."
+
+
 def main():
     if not (REPO and GH_TOKEN):
         sys.exit("GITHUB_TOKEN / GITHUB_REPOSITORY가 없어요.")
@@ -276,6 +300,7 @@ def main():
               if "pull_request" not in i]
 
     checks = [i for i in issues if i["title"].strip().startswith("점검")]
+    replies = [i for i in issues if i["title"].strip().startswith("댓글 확인")]
     queue = []
     for i in issues:
         try:
@@ -287,11 +312,11 @@ def main():
         if when and when <= now:
             queue.append(i)
 
-    if not (checks or queue):
+    if not (checks or queue or replies):
         print("올릴 예약 글이 없어요.")
         return
     if not TH_TOKEN:
-        for i in checks + queue[:1]:
+        for i in checks + replies + queue[:1]:
             comment(i["number"], "❌ 저장소에 `THREADS_ACCESS_TOKEN` 비밀값이 없어요. docs/threads-setup.md 5단계를 해 주세요.")
         sys.exit("THREADS_ACCESS_TOKEN이 없어요.")
 
@@ -304,6 +329,13 @@ def main():
 
     for i in checks:
         comment(i["number"], f"✅ 토큰 정상: @{me.get('username')} 계정에 올릴 수 있어요.")
+        gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"state": "closed", "state_reason": "completed"})
+
+    for i in replies:
+        try:
+            comment(i["number"], "💬 최근 글 댓글 모음\n" + reply_report(me))
+        except PostError as e:
+            comment(i["number"], f"❌ 댓글을 읽지 못했어요.\n\n```\n{e}\n```")
         gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"state": "closed", "state_reason": "completed"})
 
     last = last_post_time(me["id"])
