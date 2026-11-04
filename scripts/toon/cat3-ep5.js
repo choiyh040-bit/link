@@ -165,9 +165,9 @@ function chatWin(inner, placeholder) {
   </g>`;
 }
 function tears(cx, cy, s) {
+  const drop = (x, y, k) => `<path transform="translate(${x},${y}) scale(${k})" d="M0 0 C-12 20 -22 34 -22 46 A22 22 0 0 0 22 46 C22 34 12 20 0 0Z"/>`;
   return `<g transform="translate(${cx},${cy}) scale(${s})" fill="#7cc8ff" stroke="#3b8fd6" stroke-width="4">
-    <path d="M-70 -20 q-14 40 0 70 q14 -30 0 -70Z"/><path d="M70 -20 q-14 40 0 70 q14 -30 0 -70Z"/>
-    <path d="M-80 70 q-10 30 0 50 q10 -20 0 -50Z"/><path d="M80 70 q-10 30 0 50 q10 -20 0 -50Z"/></g>`;
+    ${drop(-66, 30, 1)}${drop(66, 30, 1)}${drop(-80, 110, 0.7)}${drop(80, 110, 0.7)}</g>`;
 }
 function clock(x, y) {
   return `<g transform="translate(${x},${y})"><circle r="70" fill="#fff" stroke="${INK}" stroke-width="7"/>
