@@ -292,6 +292,34 @@ def reply_report(me):
     return "\n".join(lines) or "최근 글이 없어요."
 
 
+def stats_report(me, limit=20):
+    """최근 글의 조회·좋아요·댓글·리포스트 표 (2026-11-06 사용자 요청, 토큰에 threads_manage_insights 권한 필요).
+    댓글 수에는 내가 단 광고 문구 댓글도 들어간다."""
+    posts = th("GET", f"/{me['id']}/threads",
+               {"fields": "id,text,timestamp,permalink", "limit": limit}).get("data", [])
+    rows = ["| 올린 시간 | 첫 줄 | 조회 | 좋아요 | 댓글 | 리포스트 |", "|---|---|---|---|---|---|"]
+    for p in posts:
+        first = (p.get("text") or "(이미지만)").strip().split("\n")[0][:30].replace("|", "/")
+        try:
+            t = dt.datetime.strptime(p.get("timestamp", ""), "%Y-%m-%dT%H:%M:%S%z").astimezone(KST).strftime("%m/%d %H:%M")
+        except ValueError:
+            t = p.get("timestamp", "")[:16]
+        try:
+            data = th("GET", f"/{p['id']}/insights", {"metric": "views,likes,replies,reposts"}).get("data", [])
+        except PostError as e:
+            if "permission" in str(e).lower() or "(#10)" in str(e):
+                raise PostError("토큰에 조회수 권한(threads_manage_insights)이 없어요. docs/threads-setup.md 3단계에서 권한을 추가하고 토큰을 다시 받아 주세요.")
+            rows.append(f"| {t} | [{first}]({p.get('permalink', '')}) | 못 읽음 | | | |")
+            continue
+        v = {}
+        for d in data:
+            vals = d.get("values") or [d.get("total_value") or {}]
+            v[d.get("name")] = vals[0].get("value", "") if vals else ""
+        rows.append(f"| {t} | [{first}]({p.get('permalink', '')}) | {v.get('views', '')} | {v.get('likes', '')} "
+                    f"| {v.get('replies', '')} | {v.get('reposts', '')} |")
+    return "\n".join(rows) if posts else "최근 글이 없어요."
+
+
 def main():
     if not (REPO and GH_TOKEN):
         sys.exit("GITHUB_TOKEN / GITHUB_REPOSITORY가 없어요.")
@@ -301,6 +329,7 @@ def main():
 
     checks = [i for i in issues if i["title"].strip().startswith("점검")]
     replies = [i for i in issues if i["title"].strip().startswith("댓글 확인")]
+    stats = [i for i in issues if i["title"].strip().startswith("조회 확인")]
     queue = []
     for i in issues:
         try:
@@ -312,11 +341,11 @@ def main():
         if when and when <= now:
             queue.append(i)
 
-    if not (checks or queue or replies):
+    if not (checks or queue or replies or stats):
         print("올릴 예약 글이 없어요.")
         return
     if not TH_TOKEN:
-        for i in checks + replies + queue[:1]:
+        for i in checks + replies + stats + queue[:1]:
             comment(i["number"], "❌ 저장소에 `THREADS_ACCESS_TOKEN` 비밀값이 없어요. docs/threads-setup.md 5단계를 해 주세요.")
         sys.exit("THREADS_ACCESS_TOKEN이 없어요.")
 
@@ -336,6 +365,15 @@ def main():
             comment(i["number"], "💬 최근 글 댓글 모음\n" + reply_report(me))
         except PostError as e:
             comment(i["number"], f"❌ 댓글을 읽지 못했어요.\n\n```\n{e}\n```")
+        gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"state": "closed", "state_reason": "completed"})
+
+    for i in stats:
+        m = re.search(r"(\d+)", i["title"])
+        n = min(int(m.group(1)), 50) if m else 20
+        try:
+            comment(i["number"], f"📊 최근 글 {n}개 반응 (댓글 수에는 내 광고 문구 댓글도 포함)\n\n" + stats_report(me, n))
+        except PostError as e:
+            comment(i["number"], f"❌ 조회수를 읽지 못했어요.\n\n```\n{e}\n```")
         gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"state": "closed", "state_reason": "completed"})
 
     last = last_post_time(me["id"])
