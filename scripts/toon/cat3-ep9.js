@@ -217,6 +217,7 @@ function person(sweat) {
 }
 const p1 = panelF('#fdf3e7',
   cat(540, 560, 1.0, 'sparkle', { mouthOpen: true }) +
+  [[-88, 520], [88, 520]].map(([dx, y]) => `<path transform="translate(${540 + dx},${y}) scale(0.55)" d="M0 0 C-12 20 -22 34 -22 46 A22 22 0 0 0 22 46 C22 34 12 20 0 0Z" fill="#7cc8ff" stroke="#3b8fd6" stroke-width="5"/>`).join('') +
   heart(170, 420, 1.0, '#ff8fa3') + heart(920, 460, 0.8, '#ffc2cf') +
   bubble(40, 60, 420, '드디어 주말!', 200) +
   bubble(470, 190, 570, '집사 보고싶었다 잉잉', 560),
