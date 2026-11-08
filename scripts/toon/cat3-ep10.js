@@ -236,10 +236,13 @@ const p1 = panelF('#e8f4f6',
    <text x="875" y="300" font-family="SUIT" font-weight="900" font-size="90" fill="${INK}" text-anchor="middle">밤</text>` +
   bubble(40, 70, 520, '내일 월요일...', 260),
   '일요일 밤 집사');
+const arcs = (x, y, r, flip) => [0, 1].map(i => `<path d="M${x + (flip ? 1 : -1) * (r + i * 40)} ${y - 90 - i * 20} q${flip ? 50 : -50} ${90 + i * 20} 0 ${180 + i * 40}" stroke="${INK}" stroke-width="9" fill="none" stroke-linecap="round"/>`).join('');
 const p2 = panelF('#fdf3e7',
-  coat(540, 480, false) + cat(540, 470, 0.75, 'sparkle') +
-  `<path d="M300 380 q-30 30 0 60 M780 380 q30 30 0 60" stroke="${INK}" stroke-width="8" fill="none" stroke-linecap="round"/>` +
-  bubble(470, 60, 560, '못 가게 할 거야', 640),
+  `<g transform="translate(540,600) rotate(-90) translate(-540,-560)">${coat(540, 480, false)}</g>` +
+  `<g transform="translate(540,560) rotate(-75) translate(-540,-560)">${cat(540, 560, 0.72, 'sparkle', { mouthOpen: true })}</g>` +
+  arcs(540, 560, 300, false) + arcs(540, 560, 300, true) +
+  `<text x="540" y="860" font-family="SUIT" font-weight="900" font-size="70" fill="#ff6a13" text-anchor="middle">뒹굴뒹굴</text>` +
+  bubble(470, 50, 560, '못 가게 할 거야', 640),
   '출근 코트 위에서 뒹굴뒹굴');
 const p3 = panelF('#fff0f3',
   coat(400, 480, true) + cat(820, 640, 0.6, 'side') +

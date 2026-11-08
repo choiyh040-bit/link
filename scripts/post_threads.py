@@ -320,6 +320,27 @@ def stats_report(me, limit=20):
     return "\n".join(rows) if posts else "최근 글이 없어요."
 
 
+def reply_to_post(issue, me):
+    """제목 `댓글 달기 <스레드 글 주소>` — 이미 올린 내 글에 본문(글+이미지 1장)을 댓글로 단다 (2026-11-08 사용자 요청)."""
+    m = re.search(r"/post/([A-Za-z0-9_-]+)", issue["title"]) or re.search(r"/post/([A-Za-z0-9_-]+)", issue.get("body") or "")
+    if not m:
+        raise PostError("제목에 댓글 달 글 주소(threads.com/@.../post/...)를 넣어 주세요.")
+    code = m.group(1)
+    posts = th("GET", f"/{me['id']}/threads", {"fields": "id,permalink", "limit": 50}).get("data", [])
+    target = next((p for p in posts if code in (p.get("permalink") or "")), None)
+    if not target:
+        raise PostError(f"최근 글 50개에서 {code} 글을 못 찾았어요.")
+    text, images, _ = parse_body(re.sub(r"https://www\.threads\.com/\S+", "", issue.get("body") or ""))
+    text, _ = tag_text(text)
+    fields = {"reply_to_id": target["id"], "text": text}
+    if images:
+        fields.update({"media_type": "IMAGE", "image_url": public_url(issue["number"], images[0], 1)})
+    else:
+        fields["media_type"] = "TEXT"
+    rid = publish(me["id"], fields)
+    return th("GET", f"/{rid}", {"fields": "permalink"}).get("permalink", "")
+
+
 def main():
     if not (REPO and GH_TOKEN):
         sys.exit("GITHUB_TOKEN / GITHUB_REPOSITORY가 없어요.")
@@ -330,6 +351,7 @@ def main():
     checks = [i for i in issues if i["title"].strip().startswith("점검")]
     replies = [i for i in issues if i["title"].strip().startswith("댓글 확인")]
     stats = [i for i in issues if i["title"].strip().startswith("조회 확인")]
+    addreplies = [i for i in issues if i["title"].strip().startswith("댓글 달기")]
     queue = []
     for i in issues:
         try:
@@ -341,11 +363,11 @@ def main():
         if when and when <= now:
             queue.append(i)
 
-    if not (checks or queue or replies or stats):
+    if not (checks or queue or replies or stats or addreplies):
         print("올릴 예약 글이 없어요.")
         return
     if not TH_TOKEN:
-        for i in checks + replies + stats + queue[:1]:
+        for i in checks + replies + stats + addreplies + queue[:1]:
             comment(i["number"], "❌ 저장소에 `THREADS_ACCESS_TOKEN` 비밀값이 없어요. docs/threads-setup.md 5단계를 해 주세요.")
         sys.exit("THREADS_ACCESS_TOKEN이 없어요.")
 
@@ -375,6 +397,15 @@ def main():
         except PostError as e:
             comment(i["number"], f"❌ 조회수를 읽지 못했어요.\n\n```\n{e}\n```")
         gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"state": "closed", "state_reason": "completed"})
+
+    for i in addreplies:
+        try:
+            link = reply_to_post(i, me)
+            comment(i["number"], f"✅ 댓글을 달았어요: {link}")
+            gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"state": "closed", "state_reason": "completed"})
+        except PostError as e:
+            gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"title": "실패 " + i["title"]})
+            comment(i["number"], f"❌ 댓글을 못 달았어요.\n\n```\n{e}\n```")
 
     last = last_post_time(me["id"])
     for i in queue[:MAX_PER_RUN]:
