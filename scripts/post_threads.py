@@ -262,6 +262,20 @@ def handle(issue, user_id):
     gh("PATCH", f"/repos/{REPO}/issues/{number}", {"state": "closed", "state_reason": "completed"})
 
 
+def last_auto_post_time():
+    """자동 게시(이 프로그램)가 마지막으로 올린 시각. 사용자가 손으로 올린 글은 간격 계산에서 뺀다 (2026-11-09 사용자).
+    봇이 이슈에 남긴 '✅ 스레드에 올렸어요' 댓글 시각으로 본다. 못 읽으면 None."""
+    try:
+        cs = gh("GET", f"/repos/{REPO}/issues/comments?sort=created&direction=desc&per_page=50")
+    except Exception as e:
+        print("자동 게시 기록을 못 읽었어요:", e)
+        return None
+    for c in cs:
+        if (c.get("body") or "").startswith("✅ 스레드에 올렸어요"):
+            return dt.datetime.strptime(c["created_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc).astimezone(KST)
+    return None
+
+
 def last_post_time(user_id):
     """내 계정의 가장 최근 게시 시각 (못 읽으면 None)."""
     try:
@@ -412,7 +426,7 @@ def main():
             gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"title": "실패 " + i["title"]})
             comment(i["number"], f"❌ 댓글을 못 달았어요.\n\n```\n{e}\n```")
 
-    last = last_post_time(me["id"])
+    last = last_auto_post_time()   # 손으로 올린 글은 무시 (2026-11-09 사용자)
     for i in queue[:MAX_PER_RUN]:
         immediate = bool(re.match(r"^예약\s+(지금|바로)", i["title"].strip()))
         if not immediate and last and now - last < min_gap(now):
