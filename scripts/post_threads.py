@@ -31,6 +31,11 @@ GITHUB = "https://api.github.com"
 KST = dt.timezone(dt.timedelta(hours=9))
 MAX_PER_RUN = 3          # 한 번에 너무 많이 올라가 스팸으로 보이지 않게
 MIN_GAP = dt.timedelta(hours=2)   # 시간 예약 글끼리 최소 간격 (붙여 올리면 앞 글이 묻힌다). '예약 지금'은 예외
+MORNING_GAP = dt.timedelta(hours=1)   # 아침 출근길 피크(6~9시)는 1시간 간격 (2026-11-09 사용자: 07:00·08:00)
+
+
+def min_gap(now):
+    return MORNING_GAP if 6 <= now.hour < 9 else MIN_GAP
 MAX_CHARS = 500          # 스레드 글자 수 제한
 REPLY_MARK = "=== 첫 댓글 ==="
 
@@ -410,8 +415,8 @@ def main():
     last = last_post_time(me["id"])
     for i in queue[:MAX_PER_RUN]:
         immediate = bool(re.match(r"^예약\s+(지금|바로)", i["title"].strip()))
-        if not immediate and last and now - last < MIN_GAP:
-            print(f"#{i['number']} 미룸: 마지막 게시 {last:%H:%M}, {MIN_GAP} 간격 지키는 중")
+        if not immediate and last and now - last < min_gap(now):
+            print(f"#{i['number']} 미룸: 마지막 게시 {last:%H:%M}, {min_gap(now)} 간격 지키는 중")
             continue
         print(f"#{i['number']} 게시: {i['title']}")
         try:
