@@ -244,7 +244,7 @@ const p3 = panelF('#fff0f3',
   band(cat(420, 580, 0.95, 'sparkle')) + sign(800, 420, '수능 대박') +
   heart(130, 300, 0.9, '#ff8fa3') + heart(960, 700, 0.7, '#ffc2cf') +
   bubble(40, 50, 520, '다들 화이팅!', 300),
-  '수험생 모두 화이팅');
+  '수험생 집사들 힘내라');
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1080, height: 1080 } });
