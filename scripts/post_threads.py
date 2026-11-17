@@ -147,7 +147,14 @@ def publish(user_id, fields):
         # 주제 태그를 거절하면 태그 없이 다시 올린다 (글 속 ＃태그는 그대로 보임)
         cid = th("POST", f"/{user_id}/threads", {k: v for k, v in fields.items() if k != "topic_tag"})["id"]
     wait_ready(cid)
-    return th("POST", f"/{user_id}/threads_publish", {"creation_id": cid})["id"]
+    for attempt in range(3):
+        try:
+            return th("POST", f"/{user_id}/threads_publish", {"creation_id": cid})["id"]
+        except PostError as e:
+            # 'Media Not Found'(4279009): 만든 직후 아직 안 잡힐 때가 있다. 잠깐 쉬고 다시 (2026-11-12·17 두 번 발생)
+            if "4279009" not in str(e) or attempt == 2:
+                raise
+            time.sleep(15)
 
 
 # ---------- 이슈 해석 ----------
