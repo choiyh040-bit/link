@@ -255,7 +255,7 @@ const p2 = panelF('#dfe6ee',
   `<text x="840" y="820" font-family="SUIT" font-weight="900" font-size="70" fill="#3b8fd6">주룩</text>`,
   '근데 비가 옴');
 const p3 = panelF('#eef0f4',
-  win(560, 140, 420, 420, '#5b6b80', true) + cat(330, 600, 0.9, 'wide') + tears(330, 540, 0.9) +
+  win(560, 140, 420, 420, '#5b6b80', true) + cat(330, 600, 0.9, 'sparkle').replace(/<\/g>$/, [-62, 62].map(x => `<path d="M${x - 32} -32 Q${x} -14 ${x + 32} -32" stroke="#7cc8ff" stroke-width="10" fill="none" stroke-linecap="round" opacity=".9"/><circle cx="${x + 26}" cy="-30" r="7" fill="#bfe8ff" stroke="#3b8fd6" stroke-width="3"/>`).join('') + '</g>') +
   bubble(40, 50, 520, '비 오는 거 시르다냥', 300),
   '유성우 대신 초겨울 비');
 (async () => {
