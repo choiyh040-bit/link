@@ -295,10 +295,34 @@ def last_post_time(user_id):
     return dt.datetime.strptime(data[0]["timestamp"], "%Y-%m-%dT%H:%M:%S%z").astimezone(KST)
 
 
-def reply_report(me):
-    """최근 글 10개의 다른 사람 댓글을 모은다. 숨김·삭제 여부도 표시 (2026-11-02 사용자: 댓글 수는 있는데 안 보임)."""
-    posts = th("GET", f"/{me['id']}/threads", {"fields": "id,text,timestamp,permalink", "limit": 10}).get("data", [])
-    lines = []
+def resolve_share(url):
+    """threads.com/share/... 공유 주소를 실제 글 주소의 /post/코드로 바꾼다. 못 하면 None."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            final, html = r.geturl(), r.read(200000).decode("utf-8", "ignore")
+    except Exception as e:
+        print("공유 주소를 못 열었어요:", url, e)
+        return None
+    m = re.search(r"/post/([A-Za-z0-9_-]+)", final) or re.search(r"/post/([A-Za-z0-9_-]+)", html)
+    return m.group(1) if m else None
+
+
+def reply_report(me, body=""):
+    """최근 글 댓글을 모은다. 숨김 여부도 표시 (2026-11-02 사용자: 댓글 수는 있는데 안 보임).
+    본문에 글 주소(share 주소 포함)가 있으면 그 글만, 내 댓글(광고 링크 댓글)까지 숨김 상태와 함께 보여 준다 (2026-11-18)."""
+    codes = re.findall(r"/post/([A-Za-z0-9_-]+)", body or "")
+    shares = re.findall(r"https://www\.threads\.(?:com|net)/share/[A-Za-z0-9_/-]+", body or "")
+    unresolved = []
+    for u in shares:
+        c = resolve_share(u)
+        (codes.append(c) if c else unresolved.append(u))
+    posts = th("GET", f"/{me['id']}/threads", {"fields": "id,text,timestamp,permalink", "limit": 50 if codes else 10}).get("data", [])
+    if codes:
+        posts = [p for p in posts if any(c in (p.get("permalink") or "") for c in codes)]
+    lines = [f"- 공유 주소를 글로 못 바꿨어요: {u}" for u in unresolved]
+    if codes and not posts:
+        lines.append(f"- 최근 글 50개에서 {', '.join(codes)} 글을 못 찾았어요.")
     for p in posts:
         first = (p.get("text") or "(이미지만)").strip().split("\n")[0][:40]
         try:
@@ -307,14 +331,16 @@ def reply_report(me):
         except PostError as e:
             lines.append(f"- {first} → 댓글을 못 읽었어요: {str(e)[:120]}")
             continue
-        others = [c for c in conv if c.get("username") != me.get("username")]
-        lines.append(f"\n**{first}** ({p.get('timestamp', '')[:16]}) {p.get('permalink', '')}")
-        if not others:
+        show = conv if codes else [c for c in conv if c.get("username") != me.get("username")]
+        mine = sum(1 for c in conv if c.get("username") == me.get("username"))
+        lines.append(f"\n**{first}** ({p.get('timestamp', '')[:16]}) {p.get('permalink', '')}  — 전체 댓글 {len(conv)}개 (내 댓글 {mine}개)")
+        if not show:
             lines.append("- 다른 사람 댓글 없음")
-        for c in others:
+        for c in show:
             hidden = c.get("hide_status") not in (None, "NOT_HUSHED", "UNHUSHED")
             mark = f" [{c.get('hide_status')}]" if hidden else ""
-            lines.append(f"- @{c.get('username')}{mark}: {(c.get('text') or '').strip()[:200]}")
+            who = "(내 댓글) " if c.get("username") == me.get("username") else ""
+            lines.append(f"- {who}@{c.get('username')}{mark}: {(c.get('text') or '').strip()[:200]}")
     return "\n".join(lines) or "최근 글이 없어요."
 
 
@@ -418,7 +444,7 @@ def main():
 
     for i in replies:
         try:
-            comment(i["number"], "💬 최근 글 댓글 모음\n" + reply_report(me))
+            comment(i["number"], "💬 최근 글 댓글 모음\n" + reply_report(me, i.get("body") or ""))
         except PostError as e:
             comment(i["number"], f"❌ 댓글을 읽지 못했어요.\n\n```\n{e}\n```")
         gh("PATCH", f"/repos/{REPO}/issues/{i['number']}", {"state": "closed", "state_reason": "completed"})
