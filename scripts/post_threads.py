@@ -359,8 +359,16 @@ def reply_to_post(issue, me):
     text, images, _ = parse_body(re.sub(r"https://www\.threads\.com/\S+", "", issue.get("body") or ""))
     text, _ = tag_text(text)
     fields = {"reply_to_id": target["id"], "text": text}
-    if images:
-        fields.update({"media_type": "IMAGE", "image_url": public_url(issue["number"], images[0], 1)})
+    urls = [public_url(issue["number"], u, i) for i, u in enumerate(images[:MAX_CAROUSEL], 1)]
+    if len(urls) >= 2:   # 여러 장이면 넘겨 보기 댓글 (2026-11-18 사용자: 3컷툰을 댓글로)
+        children = []
+        for u in urls:
+            cid = th("POST", f"/{me['id']}/threads", {"media_type": "IMAGE", "image_url": u, "is_carousel_item": "true"})["id"]
+            wait_ready(cid)
+            children.append(cid)
+        fields.update({"media_type": "CAROUSEL", "children": ",".join(children)})
+    elif urls:
+        fields.update({"media_type": "IMAGE", "image_url": urls[0]})
     else:
         fields["media_type"] = "TEXT"
     rid = publish(me["id"], fields)
