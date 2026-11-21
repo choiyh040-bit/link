@@ -129,7 +129,12 @@ def th(method, path, data=None):
 
 def wait_ready(container_id):
     for _ in range(20):
-        st = th("GET", f"/{container_id}", {"fields": "status,error_message"})
+        try:
+            st = th("GET", f"/{container_id}", {"fields": "status,error_message"})
+        except (TimeoutError, urllib.error.URLError):
+            # 상태 확인은 읽기만 하므로 응답이 늦으면 다시 물어본다 (2026-11-21 시간 초과로 실패)
+            time.sleep(5)
+            continue
         if st.get("status") == "FINISHED":
             return
         if st.get("status") in ("ERROR", "EXPIRED"):
