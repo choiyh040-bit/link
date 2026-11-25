@@ -281,7 +281,7 @@ const p2 = panelF('#fdf3e7',
 const p3 = panelF('#fff0f3',
   head(760, 620, 1.2, '#3b2a20', false) + cat(350, 610, 0.85, 'sparkle', { mouthOpen: true }) +
   heart(560, 340, 1.0, '#ff8fa3') + heart(960, 330, 0.7, '#ffc2cf') +
-  bubble(60, 60, 760, '내일만 버티면 주말이다냥!', 330),
+  bubble(60, 60, 820, '주말엔 집사가 집에 있다냥!', 330),
   '집사보다 더 신난 턱시');
 (async () => {
   const browser = await chromium.launch();
