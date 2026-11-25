@@ -250,41 +250,39 @@ const desk = `<rect x="80" y="660" width="920" height="40" rx="10" fill="#b5785a
   <path d="M550 600 V660" stroke="${INK}" stroke-width="4"/>`;
 const lamp = `<path d="M960 660 V420 l-80 -40" stroke="${INK}" stroke-width="12" fill="none"/><path d="M840 360 l80 40 l-40 50Z" fill="#ffd83d" stroke="${INK}" stroke-width="6"/>`;
 
-// ep19 첫눈 (턱시 기준)
-function newsPhone(x, y) {
-  return `<g transform="translate(${x},${y})"><rect x="-170" y="-260" width="340" height="520" rx="44" fill="${INK}"/>
-    <rect x="-148" y="-226" width="296" height="452" rx="22" fill="#f2f3f6"/>
-    <rect x="-148" y="-226" width="296" height="70" rx="22" fill="#3b6fd6"/>
-    <text x="0" y="-178" font-family="SUIT" font-weight="900" font-size="34" fill="#fff" text-anchor="middle">속보</text>
-    <text x="0" y="-80" font-family="SUIT" font-weight="900" font-size="44" fill="${INK}" text-anchor="middle">서울</text>
-    <text x="0" y="-20" font-family="SUIT" font-weight="900" font-size="44" fill="${INK}" text-anchor="middle">첫눈 관측</text>
-    <path d="M-110 40 h220 M-110 80 h180 M-110 120 h200" stroke="#c9ccd3" stroke-width="12" stroke-linecap="round"/></g>`;
+// ep19 내일 금요일이다냥
+function cal(x, y, s, circle) {
+  const days = [['목', '26'], ['금', '27'], ['토', '28']];
+  let cells = '';
+  days.forEach(([d, n], i) => {
+    const cx = -170 + i * 170;
+    cells += `<rect x="${cx - 70}" y="-40" width="140" height="170" rx="14" fill="#fff" stroke="${INK}" stroke-width="5"/>
+      <text x="${cx}" y="10" font-family="SUIT" font-weight="800" font-size="40" fill="${d === '토' ? '#3b6fd6' : '#5b6170'}" text-anchor="middle">${d}</text>
+      <text x="${cx}" y="100" font-family="SUIT" font-weight="900" font-size="64" fill="${INK}" text-anchor="middle">${n}</text>`;
+  });
+  const ring = circle ? `<ellipse cx="0" cy="45" rx="95" ry="110" fill="none" stroke="#e8343a" stroke-width="10" transform="rotate(-6)"/>` : '';
+  const x0 = `<path d="M-215 0 L-125 110 M-125 0 L-215 110" stroke="#e8343a" stroke-width="8" stroke-linecap="round" opacity=".7"/>`;
+  return `<g transform="translate(${x},${y}) scale(${s})">
+    <rect x="-280" y="-170" width="560" height="340" rx="22" fill="#fdf3e7" stroke="${INK}" stroke-width="7"/>
+    <rect x="-280" y="-170" width="560" height="90" rx="22" fill="#e8343a"/>
+    <text x="0" y="-108" font-family="SUIT" font-weight="900" font-size="48" fill="#fff" text-anchor="middle">11월</text>
+    <circle cx="-150" cy="-178" r="12" fill="${INK}"/><circle cx="150" cy="-178" r="12" fill="${INK}"/>
+    ${cells}${ring}${circle === 'x' ? '' : ''}</g>`;
 }
-function flake(x, y, s) {
-  return `<g transform="translate(${x},${y}) scale(${s})" stroke="#fff" stroke-width="6" stroke-linecap="round">
-    <path d="M0 -24V24M-21 -12L21 12M-21 12L21 -12"/></g>`;
-}
-function snowWin(x, y, w, h, snow) {
-  let f = '';
-  if (snow) [[0.3,0.3,1.2],[0.7,0.55,0.9]].forEach(([a,b,s]) => f += flake(x+a*w, y+b*h, s));
-  return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="16" fill="#1f2a4f" stroke="${INK}" stroke-width="8"/>
-    <clipPath id="sw${x}${y}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="16"/></clipPath>
-    <g clip-path="url(#sw${x}${y})"><circle cx="${x+w*0.8}" cy="${y+h*0.2}" r="34" fill="#fff6c9"/>${f}</g>
-    <path d="M${x + w / 2} ${y}V${y + h}M${x} ${y + h / 2}H${x + w}" stroke="${INK}" stroke-width="8"/>
-    <rect x="${x-20}" y="${y+h}" width="${w+40}" height="26" rx="10" fill="#b5785a" stroke="${INK}" stroke-width="6"/></g>`;
-}
-const p1 = panelF('#e8f0f8',
-  newsPhone(760, 560) + cat(330, 600, 0.75, 'wide', { mouthOpen: true }) +
-  bubble(60, 60, 560, '뭐? 난 못 봤는데?!', 300),
-  '서울에 첫눈 왔다는 소식');
-const p2 = panelF('#2b2f4a',
-  snowWin(300, 160, 480, 440, false) + cat(540, 640, 0.7, 'side') +
-  bubble(80, 20, 640, '내가 볼 때까지 첫눈 아님', 320),
-  '창문 앞에서 버티는 턱시');
-const p3 = panelF('#2b2f4a',
-  snowWin(300, 160, 480, 440, true) + cat(540, 640, 0.7, 'sparkle', { mouthOpen: true }) +
-  bubble(110, 20, 600, '이게 진짜 첫눈이다냥!', 330),
-  '턱시 기준 첫눈은 오늘');
+const stars = `<circle cx="130" cy="120" r="6" fill="#fff6c2"/><circle cx="960" cy="90" r="5" fill="#fff6c2"/><circle cx="880" cy="200" r="4" fill="#fff6c2"/>`;
+const p1 = panelF('#2b2f4a',
+  stars + cal(540, 330, 0.9, false) + head(540, 690, 1.3, '#3b2a20', true) +
+  `<text x="760" y="660" font-family="SUIT" font-weight="900" font-size="56" fill="#9aa0a6">...</text>`,
+  '목요일 밤, 지친 집사');
+const p2 = panelF('#fdf3e7',
+  cal(640, 330, 0.9, true) + cat(300, 640, 0.72, 'sparkle', { mouthOpen: true, rightPawUp: true }) +
+  `<text x="720" y="640" font-family="SUIT" font-weight="900" font-size="60" fill="#e8343a" transform="rotate(-6 720 640)">내일 금요일!</text>`,
+  '달력 앞에서 신난 턱시');
+const p3 = panelF('#fff0f3',
+  head(760, 620, 1.2, '#3b2a20', false) + cat(350, 610, 0.85, 'sparkle', { mouthOpen: true }) +
+  heart(560, 340, 1.0, '#ff8fa3') + heart(960, 330, 0.7, '#ffc2cf') +
+  bubble(60, 60, 760, '내일만 버티면 주말이다냥!', 330),
+  '집사보다 더 신난 턱시');
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1080, height: 1080 } });
