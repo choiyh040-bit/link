@@ -250,45 +250,41 @@ const desk = `<rect x="80" y="660" width="920" height="40" rx="10" fill="#b5785a
   <path d="M550 600 V660" stroke="${INK}" stroke-width="4"/>`;
 const lamp = `<path d="M960 660 V420 l-80 -40" stroke="${INK}" stroke-width="12" fill="none"/><path d="M840 360 l80 40 l-40 50Z" fill="#ffd83d" stroke="${INK}" stroke-width="6"/>`;
 
-// ep19 이불 속 난로
-const bed = `<rect x="60" y="560" width="960" height="300" rx="40" fill="#c9a37a" stroke="${INK}" stroke-width="7"/>
-  <rect x="80" y="500" width="920" height="120" rx="40" fill="#fff" stroke="${INK}" stroke-width="6"/>`;
-const pillow = `<rect x="110" y="420" width="300" height="130" rx="60" fill="#fff" stroke="${INK}" stroke-width="7"/>`;
-function face(x, y, mode) { // 베개에 누운 집사 얼굴
-  const eyes = mode === 'cold'
-    ? `<path d="M-32 0 l16 8 l-16 8 M32 0 l-16 8 l16 8" stroke="${INK}" stroke-width="6" fill="none" stroke-linecap="round"/>`
-    : mode === 'happy'
-    ? `<path d="M-34 8 q12 -14 24 0 M10 8 q12 -14 24 0" stroke="${INK}" stroke-width="6" fill="none" stroke-linecap="round"/>`
-    : `<circle cx="-20" cy="6" r="7" fill="${INK}"/><circle cx="20" cy="6" r="7" fill="${INK}"/>`;
-  const mouth = mode === 'happy' ? `<path d="M-14 38 q14 14 28 0" stroke="${INK}" stroke-width="6" fill="none" stroke-linecap="round"/>`
-    : `<path d="M-14 40 q7 -8 14 0 q7 8 14 0" stroke="${INK}" stroke-width="5" fill="none" stroke-linecap="round"/>`;
-  return `<g transform="translate(${x},${y})"><circle r="72" fill="#ffd9c2" stroke="${INK}" stroke-width="7"/>
-    <path d="M-72 -5 q72 -110 144 0 q-14 -70 -72 -74 q-58 4 -72 74Z" fill="#3b2a20"/>${eyes}${mouth}
-    <ellipse cx="-44" cy="26" rx="14" ry="8" fill="#f4a7b4" opacity=".8"/><ellipse cx="44" cy="26" rx="14" ry="8" fill="#f4a7b4" opacity=".8"/></g>`;
+// ep19 첫눈 (턱시 기준)
+function newsPhone(x, y) {
+  return `<g transform="translate(${x},${y})"><rect x="-170" y="-260" width="340" height="520" rx="44" fill="${INK}"/>
+    <rect x="-148" y="-226" width="296" height="452" rx="22" fill="#f2f3f6"/>
+    <rect x="-148" y="-226" width="296" height="70" rx="22" fill="#3b6fd6"/>
+    <text x="0" y="-178" font-family="SUIT" font-weight="900" font-size="34" fill="#fff" text-anchor="middle">속보</text>
+    <text x="0" y="-80" font-family="SUIT" font-weight="900" font-size="44" fill="${INK}" text-anchor="middle">서울</text>
+    <text x="0" y="-20" font-family="SUIT" font-weight="900" font-size="44" fill="${INK}" text-anchor="middle">첫눈 관측</text>
+    <path d="M-110 40 h220 M-110 80 h180 M-110 120 h200" stroke="#c9ccd3" stroke-width="12" stroke-linecap="round"/></g>`;
 }
-const blanket = (bump) => `<path d="M330 520 Q600 ${bump ? 440 : 500} 1000 520 L1000 840 Q600 870 330 840Z" fill="#8fb3e0" stroke="${INK}" stroke-width="7"/>
-  <path d="M420 600 l40 40 M560 620 l40 40 M700 600 l40 40 M840 620 l40 40" stroke="#6f94c4" stroke-width="8" stroke-linecap="round"/>`;
-const shiver = `<path d="M80 330 q-16 20 0 40 q16 20 0 40 M440 330 q16 20 0 40 q-16 20 0 40" stroke="#7cc8ff" stroke-width="7" fill="none" stroke-linecap="round"/>`;
-const night = `<circle cx="900" cy="150" r="60" fill="#fff6c9"/><circle cx="925" cy="135" r="55" fill="#2b2f4a"/>
-  <circle cx="200" cy="120" r="6" fill="#fff"/><circle cx="420" cy="90" r="4" fill="#fff"/><circle cx="700" cy="160" r="5" fill="#fff"/>`;
-function earsPeek(x, y) {
-  return `<g transform="translate(${x},${y})"><path d="M-70 10 L-55 -80 L-10 -10Z M70 10 L55 -80 L10 -10Z" fill="${INK}"/>
-    <path d="M-58 0 L-50 -55 L-24 -10Z M58 0 L50 -55 L24 -10Z" fill="${PINK}"/>
-    <path d="M-80 20 Q0 -40 80 20Z" fill="${INK}"/></g>`;
+function flake(x, y, s) {
+  return `<g transform="translate(${x},${y}) scale(${s})" stroke="#fff" stroke-width="6" stroke-linecap="round">
+    <path d="M0 -24V24M-21 -12L21 12M-21 12L21 -12"/></g>`;
 }
-const p1 = panelF('#2b2f4a',
-  night + bed + pillow + blanket(false) + face(260, 470, 'cold') + shiver +
-  bubble(330, 220, 380, '으 추워...', 420),
-  '추운 밤, 이불 속 집사');
+function snowWin(x, y, w, h, snow) {
+  let f = '';
+  if (snow) [[0.3,0.3,1.2],[0.7,0.55,0.9]].forEach(([a,b,s]) => f += flake(x+a*w, y+b*h, s));
+  return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="16" fill="#1f2a4f" stroke="${INK}" stroke-width="8"/>
+    <clipPath id="sw${x}${y}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="16"/></clipPath>
+    <g clip-path="url(#sw${x}${y})"><circle cx="${x+w*0.8}" cy="${y+h*0.2}" r="34" fill="#fff6c9"/>${f}</g>
+    <path d="M${x + w / 2} ${y}V${y + h}M${x} ${y + h / 2}H${x + w}" stroke="${INK}" stroke-width="8"/>
+    <rect x="${x-20}" y="${y+h}" width="${w+40}" height="26" rx="10" fill="#b5785a" stroke="${INK}" stroke-width="6"/></g>`;
+}
+const p1 = panelF('#e8f0f8',
+  newsPhone(760, 560) + cat(330, 600, 0.75, 'wide', { mouthOpen: true }) +
+  bubble(60, 60, 560, '뭐? 난 못 봤는데?!', 300),
+  '서울에 첫눈 왔다는 소식');
 const p2 = panelF('#2b2f4a',
-  night + bed + pillow + blanket(true) + face(260, 470, 'plain') + earsPeek(760, 470) +
-  `<text x="700" y="330" font-family="SUIT" font-weight="900" font-size="64" fill="#ffd83d" transform="rotate(-8 700 330)">꼬물꼬물</text>`,
-  '이불 끝이 볼록');
-const p3 = panelF('#fff3e6',
-  bed + pillow + face(260, 470, 'happy') + cat(560, 520, 0.6, 'sleep') + `<path d="M330 640 Q600 610 1000 640 L1000 840 Q600 870 330 840Z" fill="#8fb3e0" stroke="${INK}" stroke-width="7"/><path d="M420 700 l40 40 M560 720 l40 40 M700 700 l40 40 M840 720 l40 40" stroke="#6f94c4" stroke-width="8" stroke-linecap="round"/>` +
-  heart(820, 300, 1.0, '#ff8fa3') + heart(940, 420, 0.7, '#ffc2cf') +
-  bubble(90, 60, 760, '오늘은 내가 난로 해 줄게', 470),
-  '따뜻하다냥');
+  snowWin(300, 160, 480, 440, false) + cat(540, 640, 0.7, 'side') +
+  bubble(80, 20, 640, '내가 볼 때까지 첫눈 아님', 320),
+  '창문 앞에서 버티는 턱시');
+const p3 = panelF('#2b2f4a',
+  snowWin(300, 160, 480, 440, true) + cat(540, 640, 0.7, 'sparkle', { mouthOpen: true }) +
+  bubble(110, 20, 600, '이게 진짜 첫눈이다냥!', 330),
+  '턱시 기준 첫눈은 오늘');
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1080, height: 1080 } });
