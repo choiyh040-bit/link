@@ -251,6 +251,10 @@ const desk = `<rect x="80" y="660" width="920" height="40" rx="10" fill="#b5785a
 const lamp = `<path d="M960 660 V420 l-80 -40" stroke="${INK}" stroke-width="12" fill="none"/><path d="M840 360 l80 40 l-40 50Z" fill="#ffd83d" stroke="${INK}" stroke-width="6"/>`;
 
 // ep20 같은 시간, 다른 장소
+function bag(x, y) {
+  return `<g transform="translate(${x},${y})"><path d="M-50 -60 q50 -60 100 0" stroke="${INK}" stroke-width="10" fill="none"/>
+    <rect x="-80" y="-60" width="160" height="130" rx="18" fill="#a0785a" stroke="${INK}" stroke-width="7"/></g>`;
+}
 function happyHead(x, y, s, shirt) {
   return `<g transform="translate(${x},${y}) scale(${s})">
     <rect x="-75" y="45" width="150" height="150" rx="50" fill="${shirt}" stroke="${INK}" stroke-width="5"/>
@@ -269,19 +273,18 @@ function catPhone(x, y, r) {
 const officeDesk = `<rect x="0" y="720" width="1080" height="60" fill="#b5785a" stroke="${INK}" stroke-width="6"/>
   <rect x="80" y="430" width="300" height="200" rx="12" fill="#8e96a3" stroke="${INK}" stroke-width="6"/>
   <rect x="100" y="450" width="260" height="160" rx="6" fill="#cfe3f7"/><rect x="200" y="630" width="60" height="90" fill="#8e96a3"/>
-  <g transform="translate(860,690)"><rect x="-90" y="-50" width="180" height="70" rx="14" fill="#fff" stroke="${INK}" stroke-width="5"/>
-  <circle cx="-40" cy="-28" r="16" fill="#ffd36b"/><rect x="0" y="-40" width="60" height="30" rx="8" fill="#7cc47c"/></g>`;
+  <g transform="translate(860,640)">${bag(0, 0)}</g>`;
 function chair(x, y) {
   return `<g transform="translate(${x},${y})"><rect x="-150" y="-260" width="300" height="300" rx="40" fill="#5b6b8c" stroke="${INK}" stroke-width="7"/>
     <rect x="-180" y="20" width="360" height="70" rx="30" fill="#4a5873" stroke="${INK}" stroke-width="7"/>
     <rect x="-14" y="90" width="28" height="110" fill="#3b4252"/><path d="M-120 210 h240" stroke="#3b4252" stroke-width="18" stroke-linecap="round"/></g>`;
 }
 const clock = (x, y) => `<g transform="translate(${x},${y})"><circle r="70" fill="#fff" stroke="${INK}" stroke-width="7"/>
-  <path d="M0 0V-48M0 0V45" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><circle r="7" fill="${INK}"/></g>`;
+  <path d="M0 0V52" stroke="${INK}" stroke-width="7" stroke-linecap="round"/><path d="M0 0V-36" stroke="${INK}" stroke-width="10" stroke-linecap="round" transform="rotate(165)"/><circle r="7" fill="${INK}"/></g>`;
 const p1 = panelF('#e8f0f8',
   officeDesk + clock(940, 140) + happyHead(560, 470, 1.4, '#7fa7d9') + catPhone(380, 560, -12) +
   heart(700, 280, 0.8, '#ff8fa3'),
-  '점심시간, 폰 속 턱시 보는 집사');
+  '퇴근 30분 전, 폰 속 턱시 보는 집사');
 const p2 = panelF('#fdf3e7',
   clock(940, 140) + `<rect x="0" y="820" width="1080" height="80" fill="#f2dcc4"/>` + chair(540, 560) + cat(540, 470, 0.62, 'wide') +
   bubble(90, 60, 520, '자리 맡아 둠', 330),
@@ -290,8 +293,8 @@ const p3 = panelF('#ffffff',
   `<rect x="0" y="0" width="540" height="880" fill="#e8f0f8"/><rect x="540" y="0" width="540" height="880" fill="#fdf3e7"/>
    <path d="M540 0V880" stroke="${INK}" stroke-width="8"/>` +
   happyHead(270, 520, 1.3, '#7fa7d9') + cat(810, 560, 0.6, 'sparkle', { mouthOpen: true }) +
-  bubble(40, 120, 440, '보고 싶다', 220) + bubble(580, 120, 460, '빨리 와라냥', 760),
-  '12시 30분, 서로 생각 중');
+  bubble(40, 120, 440, '곧 간다!', 220) + bubble(580, 120, 460, '빨리 와라냥', 760),
+  '곧 퇴근, 서로 생각 중');
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1080, height: 1080 } });
