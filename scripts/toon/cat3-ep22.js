@@ -316,7 +316,8 @@ const p3 = panelF('#fff3e6',
   floor('#f2dcc4') +
   `<g transform="translate(560,760)"><path d="M-170 -60 q170 -90 340 0 l20 90 h-380Z" fill="#7fa7d9" stroke="${INK}" stroke-width="7"/>
    <path d="M-120 -40 q20 30 0 60 M120 -40 q-20 30 0 60" stroke="#5b7fb0" stroke-width="7" fill="none"/></g>` +
-  cat(560, 560, 0.75, 'sleep') + heart(860, 330, 0.8, '#ff8fa3') +
+  cat(560, 560, 0.75, 'sleep') + tears(560, 520, 0.75) +
+  `<text x="780" y="420" font-family="SUIT" font-weight="900" font-size="64" fill="#3b8fd6" transform="rotate(8 780 420)">뚝뚝</text>` +
   bubble(90, 60, 760, '집사 옷 깔고 기다릴 거다냥', 470),
   '주말 출근한 집사 기다리는 중');
 (async () => {
